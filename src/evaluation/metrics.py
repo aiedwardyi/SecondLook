@@ -46,7 +46,7 @@ def compute_auroc(y_true, y_prob, groups=None) -> float:
 
 
 def sens_at_spec(y_true, y_prob, target_spec: float = 0.95, groups=None) -> float:
-    """Sensitivity at the most stringent threshold meeting the specificity floor."""
+    """Sensitivity at the least stringent threshold that still meets the specificity floor."""
     if not (0.0 <= target_spec <= 1.0):
         raise ValueError(f"target_spec must be in [0, 1]; got {target_spec}")
     y_true_agg, y_prob_agg = _aggregate_by_group(y_true, y_prob, groups)
