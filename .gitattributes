@@ -1,0 +1,3 @@
+# Enforce line endings by file type.
+*.bat text eol=crlf
+*.sh text eol=lf

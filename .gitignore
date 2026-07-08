@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# IDE / editor
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Model weights
+*.pth
+*.pt
+
+# Data: keep tracked structure, never commit tiles/images
+data/*
+!data/.gitkeep
