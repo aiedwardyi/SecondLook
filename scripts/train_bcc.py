@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+from albumentations import Compose
 from rich import box
 from rich.console import Console
 from rich.highlighter import NullHighlighter
@@ -57,6 +58,13 @@ def seed_worker(worker_id: int) -> None:
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+
+def build_correction_setup(correction: bool) -> tuple[str, Compose]:
+    """Single coupling point: padding mode and train transform always move together."""
+    padding_mode = "reflect" if correction else "zeros"
+    train_transform = get_train_transforms(correction)
+    return padding_mode, train_transform
 
 
 def build_pos_weight(train_dataset, device: torch.device) -> torch.Tensor:
@@ -160,9 +168,10 @@ def _log_epoch(phase, epoch, train_loss, val_loss, val_auc, best, prev_val_auc, 
     )
 
 
-def _render_run_header(device, use_amp, n_train, n_val, n_test, epochs_phase1, epochs_phase2) -> None:
-    """Log the run header: device/amp, tile counts, and both phase budgets."""
+def _render_run_header(device, use_amp, correction, padding_mode, n_train, n_val, n_test, epochs_phase1, epochs_phase2) -> None:
+    """Log the run header: device/amp, correction, tile counts, and both phase budgets."""
     logger.info("device [#E0AF68]%s[/] | amp [#E0AF68]%s[/]", device, use_amp)
+    logger.info("correction [#E0AF68]%s[/] | padding_mode [#E0AF68]%s[/]", correction, padding_mode)
     logger.info("train tiles [#E0AF68]%d[/] | val tiles [#E0AF68]%d[/] | test tiles [#E0AF68]%d[/]", n_train, n_val, n_test)
     logger.info("[#BB9AF7]phase 1:[/] head only for [#E0AF68]%d[/] epochs | [#BB9AF7]phase 2:[/] full fine-tune up to [#E0AF68]%d[/] epochs", epochs_phase1, epochs_phase2)
 
@@ -249,6 +258,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--csv-path", type=Path, required=True)
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--correction", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -276,7 +286,7 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_amp = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 
-    train_transform = get_train_transforms()
+    padding_mode, train_transform = build_correction_setup(args.correction)
     eval_transform = get_eval_transforms()
 
     train_dataset = HeidelbergBccDataset(args.csv_path, args.data_root, "Train", train_transform)
@@ -289,6 +299,8 @@ def main() -> None:
         "csv": args.csv_path.name,
         "data_root": args.data_root.name,
         "seed": args.seed,
+        "correction": args.correction,
+        "padding_mode": padding_mode,
         "batch_size": args.batch_size,
         "lr": args.lr,
         "epochs_phase1": args.epochs_phase1,
@@ -317,11 +329,11 @@ def main() -> None:
 
     pos_weight = build_pos_weight(train_dataset, device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    model = BccModel(pretrained=args.pretrained).to(device)
+    model = BccModel(pretrained=args.pretrained, padding_mode=padding_mode).to(device)
 
     n_test = len(HeidelbergBccDataset(args.csv_path, args.data_root, "Test", eval_transform))
     _render_run_header(
-        device, use_amp,
+        device, use_amp, args.correction, padding_mode,
         len(train_dataset), len(val_dataset), n_test,
         args.epochs_phase1, args.epochs_phase2,
     )
