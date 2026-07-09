@@ -1,0 +1,24 @@
+{
+  "checkpoint": "experiments\\bcc\\best.pth",
+  "high_thresh": 0.7,
+  "low_thresh": 0.3,
+  "n_test_samples": 28039,
+  "n_val_samples": 12354,
+  "ppv_at_sens_095": 0.895,
+  "run_id": "bcc",
+  "sens_at_spec_095": 0.9946865037194474,
+  "spec_at_sens_095": 0.9961251752896892,
+  "test_auc": 0.9981919641614108,
+  "three_tier_counts": {
+    "negative_truth": {
+      "NEGATIVE": 26937,
+      "POSITIVE": 115,
+      "UNCERTAIN": 46
+    },
+    "positive_truth": {
+      "NEGATIVE": 28,
+      "POSITIVE": 896,
+      "UNCERTAIN": 17
+    }
+  }
+}
