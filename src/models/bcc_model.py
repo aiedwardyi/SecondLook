@@ -34,3 +34,9 @@ class BccModel(nn.Module):
 
     def count_trainable_params(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+def gradcam_target_layer(model) -> nn.Module:
+    """Return the backbone layer Grad-CAM should hook for BCC attribution maps."""
+    # CAM target class is ClassifierOutputTarget(0), the single positive logit.
+    return model.backbone.features[-1]
