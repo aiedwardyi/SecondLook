@@ -21,8 +21,8 @@ venv/
 .DS_Store
 
 # Model weights
-*.pth
-*.pt
+# *.pth
+# *.pt
 
 # Data: keep tracked structure, never commit tiles/images
 data/*
