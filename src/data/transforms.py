@@ -36,11 +36,18 @@ class HEDJitter(ImageOnlyTransform):
         return ("sigma", "bias")
 
 
-def get_train_transforms() -> A.Compose:
-    """Train pipeline: fixed resize, flips, HED-space stain jitter, normalize, to tensor."""
+def get_train_transforms(correction: bool) -> A.Compose:
+    """Train pipeline; correction=True uses a random resized crop, False a fixed resize."""
+    first = (
+        A.RandomResizedCrop(
+            size=(_INPUT_SIZE, _INPUT_SIZE), scale=(0.7, 1.0), ratio=(0.95, 1.05), p=1.0
+        )
+        if correction
+        else A.Resize(_INPUT_SIZE, _INPUT_SIZE)
+    )
     return A.Compose(
         [
-            A.Resize(_INPUT_SIZE, _INPUT_SIZE),
+            first,
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
