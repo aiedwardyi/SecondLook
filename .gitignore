@@ -23,6 +23,7 @@ venv/
 # Model weights
 *.pth
 *.pt
+!weights/*.pth
 
 # Data: keep tracked structure, never commit tiles/images
 data/*
