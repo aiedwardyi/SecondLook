@@ -1,12 +1,14 @@
 @echo off
 REM Re-render a BCC run's saved training and test-eval tables (read-only).
 setlocal
-if "%~1"=="" (
-    echo Usage: results ^<run-dir^>
-    echo Example: results experiments\bcc
+if "%~1"=="before" (
+    set "MODEL=before"
+) else if "%~1"=="after" (
+    set "MODEL=after"
+) else (
+    echo Usage: results.bat ^<before^|after^>   ^(before = baseline, no correction; after = corrected^)
     exit /b 1
 )
-set "RUN_DIR=%~f1"
 pushd "%~dp0"
 if defined PYTHONPATH (
     set "PYTHONPATH=%~dp0;%PYTHONPATH%"
@@ -18,7 +20,11 @@ if exist .\.venv\Scripts\Activate.bat (
 ) else (
     echo INFO: .venv not found at .\.venv; using current python on PATH.
 )
-python -m scripts.show_results --run-dir "%RUN_DIR%"
+if not exist experiments\%MODEL%\best.pth (
+    echo No trained %MODEL% model found at experiments\%MODEL%. Run train.bat %MODEL% first.
+    exit /b 1
+)
+python -m scripts.show_results --run-dir experiments\%MODEL%
 set "EXIT_CODE=%ERRORLEVEL%"
 popd
 endlocal & exit /b %EXIT_CODE%

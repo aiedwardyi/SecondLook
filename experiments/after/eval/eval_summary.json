@@ -1,0 +1,24 @@
+{
+  "checkpoint": "experiments\\after\\best.pth",
+  "high_thresh": 0.7,
+  "low_thresh": 0.3,
+  "n_test_samples": 28039,
+  "n_val_samples": 12354,
+  "ppv_at_sens_095": 0.8490028490028491,
+  "run_id": "after",
+  "sens_at_spec_095": 0.9936238044633369,
+  "spec_at_sens_095": 0.9941324082958152,
+  "test_auc": 0.9977265773405286,
+  "three_tier_counts": {
+    "negative_truth": {
+      "NEGATIVE": 26741,
+      "POSITIVE": 282,
+      "UNCERTAIN": 75
+    },
+    "positive_truth": {
+      "NEGATIVE": 20,
+      "POSITIVE": 914,
+      "UNCERTAIN": 7
+    }
+  }
+}
