@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-DEFAULT_MODEL = "claude-opus-4-20250514"
+DEFAULT_MODEL = "claude-opus-4-8"
 VALID_STATUS = frozenset({"VERIFIED", "FLAGGED", "DEFER"})
 
 SYSTEM_PROMPT = """You audit a medical AI detector's attention - not the patient as a pathologist.
@@ -114,7 +114,7 @@ def parse_audit_response(text: str) -> AuditResult:
     if not text or not str(text).strip():
         return fail_closed("empty response", raw=text)
     raw = str(text).strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, flags=re.DOTALL)
+    fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", raw, flags=re.DOTALL)
     blob = fenced.group(1) if fenced else raw
     try:
         start = blob.index("{")

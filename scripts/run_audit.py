@@ -64,6 +64,8 @@ def main(argv: list[str] | None = None) -> int:
         p.error("--score must be a finite value in [0, 1]")
 
     cam_path = Path(args.cam)
+    if not cam_path.is_file():
+        p.error(f"--cam not found: {cam_path}")
     cam = _load_cam(cam_path)
     metrics = compute_heatmap_metrics(cam)
 
