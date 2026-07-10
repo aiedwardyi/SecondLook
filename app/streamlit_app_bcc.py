@@ -39,9 +39,9 @@ _GRADCAM_LOCK = threading.Lock()
 _GALLERY_DIR = _ROOT_PATH / "gallery"
 _GALLERY_BUCKETS = ("positive", "unclear", "negative")
 _GALLERY_BUCKET_LABELS = {
-    "positive": "BCC",
+    "positive": "Positive",
     "unclear": "Borderline",
-    "negative": "Non-BCC",
+    "negative": "Negative",
 }
 
 PAGE_STYLES = """
@@ -153,6 +153,15 @@ def _batch_prob(model, rgb: np.ndarray, transform) -> float:
         return float(torch.sigmoid(model(tensor)).flatten()[0].item())
 
 
+def _gallery_prob(model, tile_path: Path, transform, model_id: str) -> float:
+    """Session-cached forward-only score for one gallery tile (threshold-independent)."""
+    key = (str(tile_path), model_id)
+    cache = st.session_state.setdefault("gallery_scores", {})
+    if key not in cache:
+        cache[key] = _batch_prob(model, _load_rgb(tile_path.read_bytes()), transform)
+    return cache[key]
+
+
 def _overlay(rgb_uint8: np.ndarray, cam: np.ndarray) -> np.ndarray:
     """Grad-CAM overlay at the tile's native resolution (uint8 RGB)."""
     h, w = rgb_uint8.shape[:2]
@@ -258,15 +267,14 @@ def _gallery_grid(model, path: str, transform, high: float, low: float, model_id
         paths = [p for b, p in tiles if b == bucket]
         if not paths:
             continue
-        st.markdown(f'<div class="gallery-row-title">{bucket}</div>', unsafe_allow_html=True)
+        heading = f"{_GALLERY_BUCKET_LABELS.get(bucket, bucket)} examples"
+        st.markdown(f'<div class="gallery-row-title">{heading}</div>', unsafe_allow_html=True)
         cols = st.columns(3, gap="medium")
         for col, tile_path in zip(cols, paths, strict=False):
             with col, st.container(border=True):
                 st.image(str(tile_path), width="stretch")
                 try:
-                    image_bytes = tile_path.read_bytes()
-                    rgb = _load_rgb(image_bytes)
-                    score = _batch_prob(model, rgb, transform)
+                    score = _gallery_prob(model, tile_path, transform, model_id)
                     st.markdown(
                         _score_track_html(score, high, low),
                         unsafe_allow_html=True,
