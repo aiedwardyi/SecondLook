@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,14 +16,17 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.trust.auditor import audit_tile
 from src.trust.heatmap_metrics import compute_heatmap_metrics
+
+_VERDICTS = ("POSITIVE", "NEGATIVE", "UNCERTAIN")
 
 
 def _load_cam(path: Path) -> np.ndarray:
-    img = Image.open(path)
-    arr = np.asarray(img, dtype=np.float64)
+    with Image.open(path) as img:
+        arr = np.asarray(img, dtype=np.float64)
     if arr.ndim == 3:
+        if arr.shape[2] == 4:
+            arr = arr[:, :, :3]
         arr = arr.max(axis=2)
     if arr.max() > 1.0:
         arr = arr / 255.0
@@ -37,12 +41,20 @@ def main(argv: list[str] | None = None) -> int:
         help="Grayscale Grad-CAM map preferred; RGB overlay is approximate only",
     )
     p.add_argument("--score", type=float, required=True, help="Detector score in [0, 1]")
-    p.add_argument("--verdict", required=True, help="POSITIVE / NEGATIVE / UNCERTAIN")
+    p.add_argument(
+        "--verdict",
+        required=True,
+        choices=_VERDICTS,
+        help="POSITIVE / NEGATIVE / UNCERTAIN",
+    )
     p.add_argument("--model-id", default="unknown", help="before / after / other label")
     p.add_argument("--image", default=None, help="Optional overlay path for Claude vision")
     p.add_argument("--metrics-only", action="store_true", help="Skip Claude API call")
     p.add_argument("--out", default=None, help="Append JSONL path (default stdout only)")
     args = p.parse_args(argv)
+
+    if not math.isfinite(args.score) or not (0.0 <= args.score <= 1.0):
+        p.error("--score must be a finite value in [0, 1]")
 
     cam_path = Path(args.cam)
     cam = _load_cam(cam_path)
@@ -60,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.metrics_only:
         record["audit"] = None
     else:
+        from src.trust.auditor import audit_tile
+
         result = audit_tile(
             score=args.score,
             verdict=args.verdict,

@@ -17,6 +17,8 @@ def _as_2d_float(cam: np.ndarray) -> np.ndarray:
         raise ValueError(f"cam must be 2-D HxW; got shape {arr.shape}")
     if arr.size == 0:
         raise ValueError("cam is empty")
+    if not np.isfinite(arr).all():
+        raise ValueError("cam must be finite (no nan/inf)")
     return arr
 
 
@@ -49,12 +51,12 @@ def corner_ratio(cam: np.ndarray, corner_frac: float = _DEFAULT_CORNER_FRAC) -> 
         return 0.0
     ch = max(1, int(round(h * corner_frac)))
     cw = max(1, int(round(w * corner_frac)))
-    mass = (
-        arr[:ch, :cw].sum()
-        + arr[:ch, w - cw :].sum()
-        + arr[h - ch :, :cw].sum()
-        + arr[h - ch :, w - cw :].sum()
-    )
+    mask = np.zeros((h, w), dtype=bool)
+    mask[:ch, :cw] = True
+    mask[:ch, w - cw :] = True
+    mask[h - ch :, :cw] = True
+    mask[h - ch :, w - cw :] = True
+    mass = float(np.clip(arr, 0.0, None)[mask].sum())
     return float(mass / total)
 
 

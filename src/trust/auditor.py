@@ -122,22 +122,26 @@ def parse_audit_response(text: str) -> AuditResult:
         data = json.loads(blob[start:end])
     except (ValueError, json.JSONDecodeError) as exc:
         return fail_closed(f"json parse: {exc}", raw=raw)
+    if not isinstance(data, dict):
+        return fail_closed("json root must be an object", raw=raw)
     status = str(data.get("status", "")).upper().strip()
     if status not in VALID_STATUS:
         return fail_closed(f"bad status {status!r}", raw=raw)
     reasons = data.get("reason_lines") or []
-    if not isinstance(reasons, list) or not (2 <= len(reasons) <= 4):
-        return fail_closed("reason_lines must be 2-4 items", raw=raw)
+    if not isinstance(reasons, list):
+        return fail_closed("reason_lines not a list", raw=raw)
     reasons = [str(r).strip() for r in reasons if str(r).strip()]
-    if len(reasons) < 2:
-        return fail_closed("reason_lines too short after clean", raw=raw)
+    if not (2 <= len(reasons) <= 3):
+        return fail_closed("reason_lines must be 2-3 items", raw=raw)
     cited = data.get("numbers_cited") or []
     if not isinstance(cited, list):
         return fail_closed("numbers_cited not a list", raw=raw)
     cited = [str(c).strip() for c in cited if str(c).strip()]
+    if status in {"VERIFIED", "FLAGGED"} and not cited:
+        return fail_closed("numbers_cited required for VERIFIED/FLAGGED", raw=raw)
     return AuditResult(
         status=status,
-        reason_lines=reasons[:3],
+        reason_lines=reasons,
         numbers_cited=cited,
         raw=raw,
         error=None,
@@ -189,7 +193,7 @@ def audit_tile(
             return fail_closed(f"image: {exc}")
 
     try:
-        client = anthropic.Anthropic(api_key=key)
+        client = anthropic.Anthropic(api_key=key, timeout=60.0)
         msg = client.messages.create(
             model=model,
             max_tokens=400,

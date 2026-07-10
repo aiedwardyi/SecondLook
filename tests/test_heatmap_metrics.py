@@ -57,6 +57,21 @@ def test_rejects_non_2d():
         topk_mass(np.zeros((4, 4, 3)))
 
 
+def test_rejects_nan():
+    cam = _blank()
+    cam[0, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        topk_mass(cam)
+
+
+def test_corner_ratio_clips_negatives():
+    cam = _blank()
+    cam[0:8, 0:8] = 1.0
+    cam[10:12, 10:12] = -5.0
+    assert corner_ratio(cam) >= 0.0
+    assert corner_ratio(cam) <= 1.0
+
+
 def test_corner_before_higher_than_tissue_after():
     before = _blank(128)
     before[0:16, -16:] = 1.0
