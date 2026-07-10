@@ -266,7 +266,7 @@ def _gallery_grid(model, path: str, transform, high: float, low: float, model_id
                 try:
                     image_bytes = tile_path.read_bytes()
                     rgb = _load_rgb(image_bytes)
-                    _, score = _infer(model, path, image_bytes, rgb, transform)
+                    score = _batch_prob(model, rgb, transform)
                     st.markdown(
                         _score_track_html(score, high, low),
                         unsafe_allow_html=True,
@@ -318,6 +318,7 @@ def _examples(model, path: str, transform, high: float, low: float, model_id: st
                 except ValueError as err:
                     st.error(str(err))
                 except Exception:
+                    logging.exception("examples tile decode failed for %s", choice)
                     st.error("Failed to read tile. The file may be corrupt or in an unsupported format.")
                 else:
                     _render_result(model, path, transform, high, low, image_bytes, rgb)
@@ -327,6 +328,7 @@ def _examples(model, path: str, transform, high: float, low: float, model_id: st
 def _compare(transform, high: float, low: float) -> None:
     """Same tile under before/after weights with live Grad-CAM."""
     options = _model_options()
+    model_labels = list(options)
     tiles = _gallery_tiles("after") or _gallery_tiles("before")
     if not tiles:
         st.info("No gallery tiles yet. Add curated tiles under gallery/before or gallery/after.")
@@ -339,7 +341,7 @@ def _compare(transform, high: float, low: float) -> None:
     pick = st.selectbox("Tile", range(len(labels)), format_func=lambda i: labels[i], key="compare_tile")
     side = st.radio(
         "Model",
-        ["before (correction off)", "after (correction on)"],
+        model_labels,
         index=1,
         horizontal=True,
         key="compare_side",
@@ -366,6 +368,7 @@ def _compare(transform, high: float, low: float) -> None:
         st.error(str(err))
         return
     except Exception:
+        logging.exception("compare tile decode failed for %s", tile_path)
         st.error("Failed to read tile. The file may be corrupt or in an unsupported format.")
         return
     _render_result(model, ckpt_path, transform, high, low, image_bytes, rgb)
@@ -388,6 +391,7 @@ def _single(model, path: str, transform, high: float, low: float) -> None:
         st.error(str(err))
         return
     except Exception:
+        logging.exception("single tile decode failed for %s", upload.name)
         st.error("Failed to read tile. The file may be corrupt or in an unsupported format.")
         return
     _render_result(model, path, transform, high, low, image_bytes, rgb)
@@ -403,13 +407,13 @@ def _batch(model, path: str, transform, high: float, low: float) -> None:
     if uploads:
         if len(uploads) > MAX_BATCH_FILES:
             st.error(f"Batch limited to {MAX_BATCH_FILES} tiles. You uploaded {len(uploads)}.")
-            st.stop()
+            return
         oversized = [f for f in uploads if f.size > MAX_UPLOAD_BYTES]
         if oversized:
             names = ", ".join(f.name for f in oversized[:3])
             more = f" and {len(oversized) - 3} more" if len(oversized) > 3 else ""
             st.error(f"These files exceed the {MAX_UPLOAD_MB} MB limit: {names}{more}.")
-            st.stop()
+            return
         st.info(f"{len(uploads)} tile(s) queued.")
         if st.button("Run Batch Analysis", type="primary", key="batch_run"):
             rows = []
