@@ -45,7 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--cam",
         required=True,
-        help="Grayscale Grad-CAM map preferred; RGB overlay is approximate only",
+        help=(
+            "Grad-CAM map (grayscale preferred; RGB overlay approximate). "
+            "Metrics accept PIL formats; Claude vision needs png/jpg/jpeg "
+            "(when --image is omitted, --cam is sent to vision)"
+        ),
     )
     p.add_argument("--score", type=float, required=True, help="Detector score in [0, 1]")
     p.add_argument(
@@ -55,7 +59,11 @@ def main(argv: list[str] | None = None) -> int:
         help="POSITIVE / NEGATIVE / UNCERTAIN",
     )
     p.add_argument("--model-id", default="unknown", help="before / after / other label")
-    p.add_argument("--image", default=None, help="Optional overlay path for Claude vision")
+    p.add_argument(
+        "--image",
+        default=None,
+        help="Optional overlay for Claude vision (png/jpg/jpeg only)",
+    )
     p.add_argument("--metrics-only", action="store_true", help="Skip Claude API call")
     p.add_argument("--out", default=None, help="Append JSONL path (default stdout only)")
     args = p.parse_args(argv)
@@ -66,8 +74,11 @@ def main(argv: list[str] | None = None) -> int:
     cam_path = Path(args.cam)
     if not cam_path.is_file():
         p.error(f"--cam not found: {cam_path}")
-    cam = _load_cam(cam_path)
-    metrics = compute_heatmap_metrics(cam)
+    try:
+        cam = _load_cam(cam_path)
+        metrics = compute_heatmap_metrics(cam)
+    except (OSError, ValueError) as exc:
+        p.error(f"--cam load/metrics failed: {exc}")
 
     record: dict = {
         "ts": datetime.now(timezone.utc).isoformat(),
