@@ -246,6 +246,55 @@ def _examples(model, path: str, transform, high: float, low: float, model_id: st
     _scroll_to_top(st.session_state.get("pick_id", 0))
 
 
+def _compare(transform, high: float, low: float) -> None:
+    """Same tile under before/after weights with live Grad-CAM."""
+    st.caption(
+        "Demo / teaching path. Flip before → after on the same tile. "
+        "Not everyday clinic review."
+    )
+    options = _model_options()
+    # Prefer after-folder tiles (same RGB as before/); fall back to before/.
+    tiles = _gallery_tiles("after") or _gallery_tiles("before")
+    if not tiles:
+        st.info("No gallery tiles yet. Add curated tiles under gallery/before or gallery/after.")
+        return
+    labels = [f"{bucket} · {path.stem}" for bucket, path in tiles]
+    paths = [path for _, path in tiles]
+    pick = st.selectbox("Tile", range(len(labels)), format_func=lambda i: labels[i], key="compare_tile")
+    side = st.radio(
+        "Model",
+        ["before (shipped)", "after (shipped)"],
+        index=1,
+        horizontal=True,
+        key="compare_side",
+        label_visibility="collapsed",
+    )
+    st.caption(f"Weights: **{side}**")
+    ckpt_path, expected_padding_mode, _ = options[side]
+    if not Path(ckpt_path).exists():
+        st.error(f"Model weights not found: {ckpt_path}")
+        return
+    try:
+        model = _load_model(ckpt_path, expected_padding_mode)
+    except (OSError, ValueError, RuntimeError, pickle.UnpicklingError, KeyError) as err:
+        st.error(f"Could not load '{side}': {err}")
+        return
+    tile_path = paths[pick]
+    try:
+        image_bytes = tile_path.read_bytes()
+        rgb = _load_rgb(image_bytes)
+    except OSError:
+        st.error("Failed to read tile from disk.")
+        return
+    except ValueError as err:
+        st.error(str(err))
+        return
+    except Exception:
+        st.error("Failed to read tile. The file may be corrupt or in an unsupported format.")
+        return
+    _render_result(model, ckpt_path, transform, high, low, image_bytes, rgb)
+
+
 def _single(model, path: str, transform, high: float, low: float) -> None:
     upload = st.file_uploader("Tile", type=_UPLOAD_TYPES, key="single")
     if upload is None:
@@ -377,8 +426,8 @@ def main() -> None:
         st.stop()
     transform = get_eval_transforms()
 
-    single_tab, batch_tab, examples_tab = st.tabs(
-        ["Single Image Analysis", "Batch Analysis", "Examples"]
+    single_tab, batch_tab, examples_tab, compare_tab = st.tabs(
+        ["Single Image Analysis", "Batch Analysis", "Examples", "Compare"]
     )
     with single_tab:
         _single(model, ckpt_path, transform, high, low)
@@ -386,6 +435,8 @@ def main() -> None:
         _batch(model, ckpt_path, transform, high, low)
     with examples_tab:
         _examples(model, ckpt_path, transform, high, low, model_id)
+    with compare_tab:
+        _compare(transform, high, low)
 
 
 if __name__ == "__main__":
