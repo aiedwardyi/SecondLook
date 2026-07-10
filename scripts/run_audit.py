@@ -23,13 +23,20 @@ _VERDICTS = ("POSITIVE", "NEGATIVE", "UNCERTAIN")
 
 def _load_cam(path: Path) -> np.ndarray:
     with Image.open(path) as img:
-        arr = np.asarray(img, dtype=np.float64)
+        arr = np.asarray(img)
+    orig_dtype = arr.dtype
     if arr.ndim == 3:
         if arr.shape[2] == 4:
             arr = arr[:, :, :3]
-        arr = arr.max(axis=2)
-    if arr.max() > 1.0:
-        arr = arr / 255.0
+        elif arr.shape[2] == 2:
+            arr = arr[:, :, 0]
+        if arr.ndim == 3:
+            arr = arr.max(axis=2)
+    arr = np.asarray(arr, dtype=np.float64)
+    if np.issubdtype(orig_dtype, np.integer):
+        maxv = float(np.iinfo(orig_dtype).max)
+        if maxv > 0.0:
+            arr = arr / maxv
     return arr
 
 
