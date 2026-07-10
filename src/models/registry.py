@@ -33,7 +33,7 @@ _REGISTRY = {
 }
 
 
-def resolve(model_id) -> ModelSpec:
+def resolve(model_id: str) -> ModelSpec:
     """Look up a ModelSpec by id ('before' or 'after')."""
     try:
         return _REGISTRY[model_id]
