@@ -38,6 +38,11 @@ _CACHE_MAX = 16
 _GRADCAM_LOCK = threading.Lock()
 _GALLERY_DIR = _ROOT_PATH / "gallery"
 _GALLERY_BUCKETS = ("positive", "unclear", "negative")
+_GALLERY_BUCKET_LABELS = {
+    "positive": "BCC",
+    "unclear": "Borderline",
+    "negative": "Non-BCC",
+}
 
 PAGE_STYLES = """
 <style>
@@ -61,7 +66,34 @@ PAGE_STYLES = """
     font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.08em; opacity: 0.72; margin: 1.1rem 0 0.35rem;
 }
+.gallery-score-wrap { margin-top: 0.55rem; }
+.gallery-score-track {
+    position: relative; height: 9px; border-radius: 999px; background: #d8dee6;
+    border: 1px solid #c7ced8; overflow: visible; margin: 0.15rem 0 0.35rem;
+}
+.gallery-score-dot {
+    position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 999px;
+    background: #263238; border: 2px solid #ffffff; box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
+    transform: translate(-50%, -50%);
+}
+.gallery-threshold-line {
+    position: absolute; top: -4px; bottom: -4px; width: 2px; background: #5f6b7a;
+    transform: translateX(-50%);
+}
+.gallery-score-meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    font-size: 0.76rem; color: rgba(230,232,240,0.78);
+}
+.gallery-verdict {
+    border-radius: 4px; padding: 0.12rem 0.38rem; color: #ffffff; font-weight: 800;
+    font-size: 0.68rem;
+}
+.gallery-badge-positive { background-color: #7b1010; }
+.gallery-badge-uncertain { background-color: #7a3800; }
+.gallery-badge-negative { background-color: #0d4a1a; }
 [data-testid="stTabs"] button { font-weight: 600; }
+[data-testid="stSelectbox"] [data-baseweb="select"] { cursor: pointer !important; }
+[data-testid="stSelectbox"] [data-baseweb="select"] * { cursor: pointer !important; }
 h1 a, h2 a, h3 a, h4 a, h5 a, h6 a,
 [data-testid="stHeaderActionElements"] { display: none !important; }
 </style>
@@ -71,8 +103,16 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a,
 def _model_options() -> dict[str, tuple[str, str | None, str]]:
     """Ordered {label: (checkpoint_path, expected_padding_mode, gallery_id)} for shipped weights."""
     return {
-        "after (shipped)": (os.environ.get("SECONDLOOK_BCC_AFTER") or resolve("after").path, "reflect", "after"),
-        "before (shipped)": (os.environ.get("SECONDLOOK_BCC_BEFORE") or resolve("before").path, "zeros", "before"),
+        "before (correction off)": (
+            os.environ.get("SECONDLOOK_BCC_BEFORE") or resolve("before").path,
+            "zeros",
+            "before",
+        ),
+        "after (correction on)": (
+            os.environ.get("SECONDLOOK_BCC_AFTER") or resolve("after").path,
+            "reflect",
+            "after",
+        ),
     }
 
 
@@ -126,6 +166,34 @@ def _overlay(rgb_uint8: np.ndarray, cam: np.ndarray) -> np.ndarray:
     return overlay_gradcam(rgb_uint8.astype(np.float32) / 255.0, cam_full)
 
 
+def _pct(value: float) -> float:
+    """Track coordinate for a 0 to 1 score or threshold."""
+    return min(max(value, 0.0), 1.0) * 100.0
+
+
+def _score_track_html(score: float, high: float, low: float) -> str:
+    """Score dot plus live threshold lines for one gallery tile."""
+    verdict = compute_three_tier([score], high, low)[0]
+    badge = {
+        "POSITIVE": "gallery-badge-positive",
+        "UNCERTAIN": "gallery-badge-uncertain",
+        "NEGATIVE": "gallery-badge-negative",
+    }[verdict]
+    return f"""
+    <div class="gallery-score-wrap">
+        <div class="gallery-score-track" aria-label="model score track">
+            <span class="gallery-threshold-line" style="left: {_pct(low):.3f}%"></span>
+            <span class="gallery-threshold-line" style="left: {_pct(high):.3f}%"></span>
+            <span class="gallery-score-dot" style="left: {_pct(score):.3f}%"></span>
+        </div>
+        <div class="gallery-score-meta">
+            <span>model score {score:.4f}</span>
+            <span class="gallery-verdict {badge}">{verdict}</span>
+        </div>
+    </div>
+    """
+
+
 def _verdict_card(prob: float, high: float, low: float) -> None:
     """Colored three-tier verdict card with the model score."""
     label = compute_three_tier([prob], high, low)[0]
@@ -138,7 +206,7 @@ def _verdict_card(prob: float, high: float, low: float) -> None:
         f"""
         <div class="verdict-wrap {css}">
             <span class="verdict-label">{label}</span>
-            <span class="verdict-prob">Model score: {prob * 100:.2f}%</span>
+            <span class="verdict-prob">Model score: {prob:.4f}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -181,7 +249,7 @@ def _gallery_tiles(model_id: str) -> list[tuple[str, Path]]:
     return tiles
 
 
-def _gallery_grid(model_id: str) -> None:
+def _gallery_grid(model, path: str, transform, high: float, low: float, model_id: str) -> None:
     """3x3 example-tile picker; a click stores the chosen tile path in gallery_choice."""
     tiles = _gallery_tiles(model_id)
     if not tiles:
@@ -195,6 +263,16 @@ def _gallery_grid(model_id: str) -> None:
         for col, tile_path in zip(cols, paths, strict=False):
             with col, st.container(border=True):
                 st.image(str(tile_path), width="stretch")
+                try:
+                    image_bytes = tile_path.read_bytes()
+                    rgb = _load_rgb(image_bytes)
+                    _, score = _infer(model, path, image_bytes, rgb, transform)
+                    st.markdown(
+                        _score_track_html(score, high, low),
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    logging.exception("gallery score failed for %s", tile_path.name)
                 if st.button(
                     "Analyze",
                     key=f"gallery_{model_id}_{tile_path.stem}",
@@ -225,7 +303,7 @@ def _scroll_to_top(nonce: int) -> None:
 def _examples(model, path: str, transform, high: float, low: float, model_id: str) -> None:
     """Examples tab; the clicked tile's result renders above the picker grid."""
     result_area = st.empty()
-    _gallery_grid(model_id)
+    _gallery_grid(model, path, transform, high, low, model_id)
     choice = st.session_state.get("gallery_choice")
     if choice and Path(choice).exists():
         with result_area.container():
@@ -248,22 +326,20 @@ def _examples(model, path: str, transform, high: float, low: float, model_id: st
 
 def _compare(transform, high: float, low: float) -> None:
     """Same tile under before/after weights with live Grad-CAM."""
-    st.caption(
-        "Demo / teaching path. Flip before → after on the same tile. "
-        "Not everyday clinic review."
-    )
     options = _model_options()
-    # Prefer after-folder tiles (same RGB as before/); fall back to before/.
     tiles = _gallery_tiles("after") or _gallery_tiles("before")
     if not tiles:
         st.info("No gallery tiles yet. Add curated tiles under gallery/before or gallery/after.")
         return
-    labels = [f"{bucket} · {path.stem}" for bucket, path in tiles]
+    labels = [
+        f"{_GALLERY_BUCKET_LABELS.get(bucket, bucket)} {path.stem.rsplit('_', 1)[-1]}"
+        for bucket, path in tiles
+    ]
     paths = [path for _, path in tiles]
     pick = st.selectbox("Tile", range(len(labels)), format_func=lambda i: labels[i], key="compare_tile")
     side = st.radio(
         "Model",
-        ["before (shipped)", "after (shipped)"],
+        ["before (correction off)", "after (correction on)"],
         index=1,
         horizontal=True,
         key="compare_side",
@@ -363,7 +439,7 @@ def _batch(model, path: str, transform, high: float, low: float) -> None:
             else:
                 label = compute_three_tier([r["prob"]], high, low)[0]
                 table.append(
-                    {"Filename": r["name"], "Model score": f"{r['prob'] * 100:.2f}%", "Verdict": label}
+                    {"Filename": r["name"], "Model score": f"{r['prob']:.4f}", "Verdict": label}
                 )
         df = pd.DataFrame(table)
         st.dataframe(
@@ -397,10 +473,11 @@ def main() -> None:
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Model**")
     label = st.sidebar.radio(
-        "Model", labels, index=labels.index("after (shipped)"), label_visibility="collapsed"
+        "Model", labels, index=labels.index("after (correction on)"), label_visibility="collapsed"
     )
     st.sidebar.markdown(f"**Device:** `{get_best_device().upper()}`")
     st.sidebar.markdown("**Detection Thresholds**")
+    st.sidebar.caption("Drag the thresholds; tiles near a line flip live.")
     high = st.sidebar.slider("POSITIVE threshold", 0.50, 0.90, HIGH_THRESH, 0.05)
     low = st.sidebar.slider("NEGATIVE threshold", 0.10, 0.50, LOW_THRESH, 0.05)
     if low >= high:
