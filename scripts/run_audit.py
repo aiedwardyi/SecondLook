@@ -26,12 +26,13 @@ def _load_cam(path: Path) -> np.ndarray:
         arr = np.asarray(img)
     orig_dtype = arr.dtype
     if arr.ndim == 3:
-        if arr.shape[2] == 4:
-            arr = arr[:, :, :3]
-        elif arr.shape[2] == 2:
+        # LA: take luminance. RGB/RGBA colormaps are not monotonic in attention.
+        if arr.shape[2] == 2:
             arr = arr[:, :, 0]
-        if arr.ndim == 3:
-            arr = arr.max(axis=2)
+        else:
+            raise ValueError(
+                "RGB CAM overlays corrupt mass metrics; use a grayscale map"
+            )
     arr = np.asarray(arr, dtype=np.float64)
     if np.issubdtype(orig_dtype, np.integer):
         maxv = float(np.iinfo(orig_dtype).max)
@@ -46,8 +47,8 @@ def main(argv: list[str] | None = None) -> int:
         "--cam",
         required=True,
         help=(
-            "Grad-CAM map (grayscale preferred; RGB overlay approximate). "
-            "Metrics accept PIL formats; Claude vision needs png/jpg/jpeg "
+            "Grad-CAM map (grayscale only; RGB overlays rejected). "
+            "Metrics accept PIL grayscale/LA; Claude vision needs png/jpg/jpeg "
             "(when --image is omitted, --cam is sent to vision)"
         ),
     )
