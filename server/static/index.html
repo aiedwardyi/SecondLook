@@ -298,6 +298,7 @@ const S = {
   queue: [], queueOpen: true, queuePulse: false,
   evOpen: false, askOpen: false, msgs: [], askPending: false,
   dialogKey: null,
+  trustEnterKey: null,
   freshQueueKey: null,
   examplesPick: false,
   scrollMainTo: null,
@@ -452,8 +453,23 @@ function addToQueue(key, pulse) {
   S.queue.unshift(key);
   if (pulse) {
     S.freshQueueKey = key; S.queuePulse = true; S.queueOpen = true;
-    setTimeout(() => { S.queuePulse = false; S.freshQueueKey = null; render(); }, 700);
+    setTimeout(() => {
+      S.queuePulse = false;
+      S.freshQueueKey = null;
+      const badge = document.querySelector('.queue-badge');
+      if (badge) badge.classList.remove('pulse');
+      const fresh = document.querySelector('.queue-item.fresh');
+      if (fresh) fresh.classList.remove('fresh');
+    }, 700);
   }
+}
+
+function takeCardEnter(e) {
+  if (!e || !e.analysis || !e.audit) return false;
+  const k = (e.key || '') + '|' + e.analysis.evidence_hash;
+  if (S.trustEnterKey === k) return false;
+  S.trustEnterKey = k;
+  return true;
 }
 
 function closeTransient() {
@@ -754,7 +770,7 @@ async function ensureLocalPositiveAudit() {
     const slot2 = document.getElementById('trustSlot');
     if (slot2) {
       slot2.dataset.kind = 'audit';
-      slot2.innerHTML = trustCardHTML(next, { enter: true });
+      slot2.innerHTML = trustCardHTML(next, { enter: takeCardEnter(next) });
     } else {
       render();
     }
@@ -788,6 +804,7 @@ function resultHTML() {
   const tier = tierForScore(a.score);
   const vt = toneVars(TONE[tier]);
   const kind = trustBelowKind(e);
+  const enter = kind === 'audit' && takeCardEnter(e);
   return '<section id="resultSection" style="margin-top:22px">' +
     '<div class="banner" id="detectorBanner" data-tier="' + tier + '" style="border-color:' + vt.ln + ';background:' + vt.bg + '">' +
     '<span class="dot" style="background:' + vt.c + '"></span>' +
@@ -798,7 +815,7 @@ function resultHTML() {
     '<div class="pair">' +
     '<figure style="margin:0"><figcaption class="figcap">Original tile</figcaption><div class="tile-img" style="background-image:url(\'' + a.original_png + '\')"></div></figure>' +
     '<figure style="margin:0"><figcaption class="figcap">Where the model looked</figcaption><div class="tile-img" style="background-image:url(\'' + a.overlay_png + '\')"></div></figure>' +
-    '</div><div id="trustSlot" data-kind="' + kind + '" style="margin-top:20px">' + trustBelowHTML(e, { enter: true }) + '</div></section>';
+    '</div><div id="trustSlot" data-kind="' + kind + '" style="margin-top:20px">' + trustBelowHTML(e, { enter: enter }) + '</div></section>';
 }
 
 function stripHTML(dotColor, title, body) {
