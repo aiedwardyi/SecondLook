@@ -1,5 +1,5 @@
 @echo off
-REM Launch the BCC Streamlit demo via the repo venv so torch and src are importable.
+REM Launch the BCC Streamlit app via the repo venv so torch and src are importable.
 setlocal
 pushd "%~dp0"
 if defined PYTHONPATH (
