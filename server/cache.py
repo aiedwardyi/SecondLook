@@ -70,9 +70,7 @@ def put(evidence_hash: str, record: AnalysisRecord) -> None:
 
 
 def set_audit(evidence_hash: str, audit: AuditResponse) -> bool:
-    """Store a final audit only. DEFER is not cached for reuse."""
-    if audit.status == "DEFER":
-        return False
+    """Store audit for ask lookup. DEFER is stored but not reused by /api/audit."""
     with _LOCK:
         record = _RECORDS.get(evidence_hash)
         if record is None:

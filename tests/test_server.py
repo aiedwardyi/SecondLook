@@ -385,7 +385,7 @@ def test_audit_reuses_cached_result(client, monkeypatch):
     )
 
 
-def test_audit_does_not_cache_or_reuse_defer(client, monkeypatch):
+def test_audit_stores_defer_for_ask_but_does_not_reuse_on_audit(client, monkeypatch):
     _put_record()
     audit = Mock(
         return_value=AuditResult(
@@ -396,15 +396,26 @@ def test_audit_does_not_cache_or_reuse_defer(client, monkeypatch):
         )
     )
     monkeypatch.setattr(server_main, "audit_tile", audit)
+    follow_up = Mock(return_value=("Score and map leave the call open.", None))
+    monkeypatch.setattr(server_main, "follow_up_attention", follow_up)
 
     first = client.post("/api/audit", json={"evidence_hash": "evidence"})
     second = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    ask = client.post(
+        "/api/ask",
+        json={"evidence_hash": "evidence", "question": "Why is this unresolved?"},
+    )
 
     assert first.status_code == 200
     assert first.json()["status"] == "DEFER"
     assert second.json()["status"] == "DEFER"
     assert audit.call_count == 2
-    assert cache.get("evidence").audit is None
+    stored = cache.get("evidence").audit
+    assert stored is not None
+    assert stored.status == "DEFER"
+    assert ask.status_code == 200
+    assert ask.json() == {"answer": "Score and map leave the call open.", "error": None}
+    follow_up.assert_called_once()
 
 
 def test_cache_evicts_oldest_past_max(monkeypatch):

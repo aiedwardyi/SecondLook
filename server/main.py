@@ -239,8 +239,8 @@ def audit(body: AuditRequest) -> AuditResponse:
         numbers_cited=result.numbers_cited,
         defer_reason=result.defer_reason,
     )
-    if response.status != "DEFER":
-        cache.set_audit(body.evidence_hash, response)
+    # Store all statuses (incl. DEFER) so /api/ask works; DEFER still re-runs above.
+    cache.set_audit(body.evidence_hash, response)
     return response
 
 
