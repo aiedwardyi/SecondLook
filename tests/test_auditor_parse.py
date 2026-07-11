@@ -213,6 +213,44 @@ def test_plain_reason_line_maps_metric_fields():
     assert "corner_ratio" not in plain_reason_line("corner_ratio and edge_ratio")
 
 
+def test_metric_level_matches_ui_bands():
+    from src.trust.auditor import metric_level
+
+    assert metric_level(0.14) == "low"
+    assert metric_level(0.15) == "modest"
+    assert metric_level(0.21) == "modest"
+    assert metric_level(0.29) == "modest"
+    assert metric_level(0.30) == "high"
+    assert metric_level(0.41) == "high"
+
+
+def test_align_reason_metric_labels_fixes_mismatched_intensity():
+    from src.trust.auditor import align_reason_metric_labels
+
+    metrics = {
+        "topk_mass": 0.22,
+        "corner_ratio": 0.21,
+        "edge_ratio": 0.37,
+    }
+    lines = [
+        "Corner heat is high at 21% with a bright hot spot.",
+        "Edge heat is elevated at 37%; this call needs human review.",
+        "Focus concentration is low at 22%.",
+        "Attention is spread with low focus at 18%.",
+    ]
+    metrics_spread = {
+        "topk_mass": 0.18,
+        "corner_ratio": 0.03,
+        "edge_ratio": 0.18,
+    }
+    fixed = align_reason_metric_labels(lines[:3], metrics)
+    assert fixed[0] == "Corner heat is modest at 21% with a bright hot spot."
+    assert fixed[1] == "Edge heat is high at 37%; this call needs human review."
+    assert fixed[2] == "Focus concentration is modest at 22%."
+    paraphrased = align_reason_metric_labels([lines[3]], metrics_spread)
+    assert paraphrased[0] == "Attention is spread with modest focus at 18%."
+
+
 def test_normalize_followup_question_guards():
     assert normalize_followup_question("  Why?  ") == "Why?"
     try:

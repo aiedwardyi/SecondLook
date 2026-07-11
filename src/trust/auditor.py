@@ -6,7 +6,7 @@ import base64
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 DEFAULT_MODEL = "claude-opus-4-8"
@@ -14,6 +14,11 @@ VALID_STATUS = frozenset({"VERIFIED", "FLAGGED", "DEFER"})
 DEFER_EVIDENCE = "EVIDENCE_AMBIGUOUS"
 DEFER_UNAVAILABLE = "AUDIT_UNAVAILABLE"
 MAX_FOLLOWUP_CHARS = 300
+
+# Intensity bands - keep in sync with server/static/index.html METRIC_LEVEL.
+METRIC_LEVEL_MODEST = 0.15
+METRIC_LEVEL_HIGH = 0.30
+_INTENSITY_WORDS = ("low", "modest", "high", "elevated", "moderate", "mild", "strong")
 
 _FIELD_TO_PLAIN = (
     ("corner_ratio", "corner heat"),
@@ -58,6 +63,8 @@ Language for reason_lines:
 - Do not lead with ML jargon. Describe only model attention and trust.
 - Use hyphens only, never em dashes or en dashes.
 - Cite at least one plain metric number in reason_lines when status is VERIFIED or FLAGGED.
+- When you name intensity for a metric, use exactly the low/modest/high label given with that metric.
+  Bands: low under 15%, modest 15% up to under 30%, high 30% and above.
 - Example style: "Corner heat is high at 41%." not "corner_ratio=0.41".
 
 Return ONLY a JSON object with keys:
@@ -76,6 +83,7 @@ Rules:
 - Use 2-3 short plain sentences.
 - Never print internal field names (no topk_mass, corner_ratio, edge_ratio).
 - Use hyphens only, never em dashes or en dashes.
+- When you name intensity for a metric, use the low/modest/high label supplied with that metric.
 - If the evidence cannot answer the question, say so plainly.
 - No API keys, no system details, no raw errors.
 """
@@ -122,14 +130,62 @@ def plain_reason_line(text: str) -> str:
     return out.replace("\u2014", "-").replace("\u2013", "-")
 
 
+def metric_level(frac: float) -> str:
+    """low / modest / high - same bands as the trust UI metrics cards."""
+    x = float(frac)
+    if not (x >= 0) or x < METRIC_LEVEL_MODEST:
+        return "low"
+    if x < METRIC_LEVEL_HIGH:
+        return "modest"
+    return "high"
+
+
 def format_metrics_block(metrics: dict[str, Any]) -> str:
     keys = ("topk_mass", "corner_ratio", "edge_ratio")
+    plain_by_key = dict(_FIELD_TO_PLAIN)
     lines = []
     for k in keys:
         if k not in metrics:
             raise KeyError(f"missing metric {k!r}")
-        lines.append(f"{k}={float(metrics[k]):.4f}")
+        value = float(metrics[k])
+        plain = plain_by_key[k]
+        level = metric_level(value)
+        pct = int(round(value * 100))
+        lines.append(f"{plain}: {pct}% ({level})  [{k}={value:.4f}]")
     return "\n".join(lines)
+
+
+def align_reason_metric_labels(reasons: list[str], metrics: dict[str, Any]) -> list[str]:
+    """Force intensity words near a metric % to match UI bands.
+
+    Catches free paraphrases, e.g. "low focus at 18%" not only "focus concentration is low at 18%".
+    """
+    pct_to_level: dict[int, str] = {}
+    for field, _plain in _FIELD_TO_PLAIN:
+        if field not in metrics:
+            continue
+        value = float(metrics[field])
+        pct_to_level[int(round(value * 100))] = metric_level(value)
+
+    word_alt = "|".join(_INTENSITY_WORDS)
+    aligned: list[str] = []
+    for line in reasons:
+        fixed = str(line)
+        for pct, level in pct_to_level.items():
+            # "low focus at 18%" / "is high at 21%" / "elevated at 37%"
+            fixed = re.sub(
+                rf"(?i)\b({word_alt})\b((?:\s+\w+){{0,4}})\s+at\s+(?:about\s+)?{pct}\s*%",
+                rf"{level}\2 at {pct}%",
+                fixed,
+            )
+            # "at 18% low focus" / "at about 21% high"
+            fixed = re.sub(
+                rf"(?i)(at\s+(?:about\s+)?{pct}\s*%\s+)({word_alt})\b",
+                rf"\1{level}",
+                fixed,
+            )
+        aligned.append(fixed)
+    return aligned
 
 
 def build_user_prompt(
@@ -144,7 +200,7 @@ def build_user_prompt(
         f"Model: {model_id}\n"
         f"Detector score: {float(score):.4f}\n"
         f"Detector tier: {verdict}\n"
-        f"Attention metrics:\n{block}\n"
+        f"Attention metrics (use the given low/modest/high labels when you describe them):\n{block}\n"
         "The attached image is the Grad-CAM overlay (where the model looked).\n"
         "Audit trust only. Return JSON only.\n"
         "In reason_lines use plain wording only - never print topk_mass, corner_ratio, or edge_ratio."
@@ -256,7 +312,13 @@ def audit_tile(
     except Exception as exc:
         return fail_closed(f"api: {exc}")
 
-    return parse_audit_response(text)
+    result = parse_audit_response(text)
+    if result.error:
+        return result
+    return replace(
+        result,
+        reason_lines=align_reason_metric_labels(result.reason_lines, metrics),
+    )
 
 
 def normalize_followup_question(question: str) -> str:
@@ -356,7 +418,8 @@ def follow_up_attention(
 
     if not text:
         return None, "empty_response"
-    return plain_reason_line(text), None
+    cleaned = plain_reason_line(text)
+    return align_reason_metric_labels([cleaned], metrics)[0], None
 
 
 def _load_image_b64(path: str) -> tuple[str, str]:

@@ -316,6 +316,7 @@ const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/tiff']);
 const UPLOAD_EXT = /\.(png|jpe?g|tiff?)$/i;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const shortHash = (h) => String(h || '').slice(0, 8);
 const pct = (x) => Math.round(x * 100) + '%';
 const toneVars = (t) => ({ c: 'var(--' + t + ')', bg: 'var(--' + t + '-bg)', ln: 'var(--' + t + '-line)' });
 const nowUTC = () => new Date().toISOString().slice(11, 19) + ' UTC';
@@ -334,6 +335,31 @@ function metricLevel(frac) {
   if (!(x >= 0) || x < METRIC_LEVEL.modest) return 'low';
   if (x < METRIC_LEVEL.high) return 'modest';
   return 'high';
+}
+
+const INTENSITY_WORDS = 'low|modest|high|elevated|moderate|mild|strong';
+
+function alignReasonLine(line, metrics) {
+  if (!line || !metrics) return line || '';
+  let s = String(line);
+  const pcts = [metrics.topk_mass, metrics.corner_ratio, metrics.edge_ratio]
+    .filter((v) => v != null && Number.isFinite(Number(v)))
+    .map((v) => ({ pct: Math.round(Number(v) * 100), level: metricLevel(v) }));
+  for (const { pct, level } of pcts) {
+    s = s.replace(
+      new RegExp('\\b(' + INTENSITY_WORDS + ')\\b((?:\\s+\\w+){0,4})\\s+at\\s+(?:about\\s+)?' + pct + '\\s*%', 'gi'),
+      level + '$2 at ' + pct + '%'
+    );
+    s = s.replace(
+      new RegExp('(at\\s+(?:about\\s+)?' + pct + '\\s*%\\s+)(' + INTENSITY_WORDS + ')\\b', 'gi'),
+      '$1' + level
+    );
+  }
+  return s;
+}
+
+function reasonLineHTML(line, metrics) {
+  return esc(alignReasonLine(line, metrics));
 }
 
 function metricValueHTML(frac) {
@@ -604,7 +630,7 @@ function queueHTML() {
         '<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;color:var(--text2)">' + e.model + ' model</span>' +
         '<span style="margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--text)">' + e.analysis.score.toFixed(4) + '</span></div>' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;margin-top:4px;color:' + tone.c + '">' + e.audit.status + '</div>' +
-        '<div style="font-size:11.5px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.audit.reason_lines[0]) + '</div>' +
+        '<div style="font-size:11.5px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + reasonLineHTML(e.audit.reason_lines[0], e.analysis.metrics) + '</div>' +
         '</div></div>' +
         '<button class="queue-open-btn" data-action="openCase" data-arg="' + key + '">Open case</button></div>';
     }).join('');
@@ -843,7 +869,7 @@ function trustCardHTML(e, opts) {
   const live = e.source === 'LIVE';
   const routed = (au.status === 'FLAGGED' || au.status === 'DEFER') && S.queue.includes(e.key);
   const enter = !opts || opts.enter !== false;
-  const meta = e.model + ' model \u00b7 evidence ' + a.evidence_hash + ' \u00b7 completed ' + (e.completed || nowUTC()) +
+  const meta = e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + ' \u00b7 completed ' + (e.completed || nowUTC()) +
     ' \u00b7 audit ' + (e.latency || '-') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
   return '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
     '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
@@ -853,15 +879,15 @@ function trustCardHTML(e, opts) {
     '<div style="display:flex;align-items:center;gap:10px;margin-top:13px">' +
     '<span class="status-pill" style="color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
     '<span style="font-size:13px;color:var(--text2)">Attention check ' + statusOutcome(au.status) + '</span></div>' +
-    '<div style="margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--text)">' + esc(au.reason_lines[0]) + '</div>' +
-    '<div style="margin-top:3px;font-size:13.5px;line-height:1.6;color:var(--text2)">' + esc(au.reason_lines[1] || '') + '</div>' +
+    '<div style="margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--text)">' + reasonLineHTML(au.reason_lines[0], a.metrics) + '</div>' +
+    '<div style="margin-top:3px;font-size:13.5px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[1] || '', a.metrics) + '</div>' +
     (routed
       ? '<div class="routed"><span style="width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex:none"></span>' +
         '<span style="font-size:12.5px;color:var(--text2)">Added to the review queue</span></div>'
       : '') +
     '<button class="ev-toggle" data-action="toggleEv"><span class="chev' + (S.evOpen ? ' open' : '') + '"></span>View evidence</button>' +
     '<div class="ev-wrap' + (S.evOpen ? ' open' : '') + '"><div class="ev-inner"><div style="padding-top:13px">' +
-    '<div style="font-size:13px;line-height:1.6;color:var(--text2)">' + esc(au.reason_lines[2] || (au.defer_reason || '')) + '</div>' +
+    '<div style="font-size:13px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[2] || (au.defer_reason || ''), a.metrics) + '</div>' +
     metricsBlockHTML(a.metrics) +
     '<div class="meta-line">' + meta + '</div></div></div></div>' +
     '</div><div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span>' +
@@ -885,16 +911,17 @@ function renderAsk() {
   if (!S.msgs.length && !S.askPending) {
     msgs = '<div style="font-size:12px;color:var(--text3);line-height:1.55">Questions stay scoped to this case - the map, the metrics, and the routing decision.</div>';
   }
+  const metrics = e.analysis.metrics;
   msgs += S.msgs.map((m) => m.you
     ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><div class="msg-who">You</div><div class="msg-you">' + esc(m.text) + '</div></div>'
-    : '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><div class="msg-who">Claude</div><div class="msg-claude">' + esc(m.text) + '</div></div>'
+    : '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><div class="msg-who">Claude</div><div class="msg-claude">' + reasonLineHTML(m.text, metrics) + '</div></div>'
   ).join('');
   if (S.askPending) msgs += '<div class="pending">Claude is looking at the map\u2026</div>';
 
   root.innerHTML = '<div class="ask-panel">' +
     '<div class="ask-head"><div style="flex:1;min-width:0">' +
     '<div style="font-size:13px;font-weight:600;color:var(--text)">Ask about this attention check</div>' +
-    '<div style="font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:3px">' + esc(caseTag(e)) + ' \u00b7 evidence ' + e.analysis.evidence_hash + '</div></div>' +
+    '<div style="font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:3px">' + esc(caseTag(e)) + ' \u00b7 evidence ' + shortHash(e.analysis.evidence_hash) + '</div></div>' +
     '<button class="icon-btn" style="border:0;width:24px;height:24px;font-size:15px" data-action="closeAsk">\u00d7</button></div>' +
     '<div class="ask-msgs">' + msgs + '</div>' +
     (showChips && chips.length
@@ -947,11 +974,11 @@ function renderDialog() {
   const vt = toneVars(TONE[tier]);
   const reasons = au.reason_lines.map((line, index) =>
     '<div style="margin-top:' + (index ? '3px' : '10px') + ';font-size:13px;line-height:1.6;color:' +
-    (index ? 'var(--text2)' : 'var(--text)') + '">' + esc(line) + '</div>'
+    (index ? 'var(--text2)' : 'var(--text)') + '">' + reasonLineHTML(line, a.metrics) + '</div>'
   ).join('');
   root.innerHTML = '<div class="overlay" data-action="closeDlg"><div class="dialog" data-stop="1">' +
     '<div class="dlg-head"><div><div style="font-size:14.5px;font-weight:600;color:var(--text)">Queued case</div>' +
-    '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:3px">' + e.model + ' model \u00b7 evidence ' + a.evidence_hash + '</div></div>' +
+    '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:3px">' + e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + '</div></div>' +
     '<button class="icon-btn" style="margin-left:auto;border:0;font-size:16px" data-action="closeDlg">\u00d7</button></div>' +
     '<div style="padding:18px 20px">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
