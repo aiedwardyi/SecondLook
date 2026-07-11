@@ -1,6 +1,23 @@
-"""Auditor parse tests."""
+"""Auditor parse, follow-up, and API-path tests."""
 
-from src.trust.auditor import fail_closed, parse_audit_response
+import base64
+import sys
+import types
+from unittest.mock import MagicMock
+
+from src.trust.auditor import (
+    DEFER_EVIDENCE,
+    DEFER_UNAVAILABLE,
+    MAX_FOLLOWUP_CHARS,
+    audit_tile,
+    fail_closed,
+    follow_up_attention,
+    normalize_followup_question,
+    parse_audit_response,
+    plain_reason_line,
+)
+
+_METRICS = {"topk_mass": 0.4, "corner_ratio": 0.1, "edge_ratio": 0.2}
 
 
 def test_parse_valid_json():
@@ -15,6 +32,7 @@ def test_parse_valid_json():
     r = parse_audit_response(raw)
     assert r.status == "FLAGGED"
     assert r.error is None
+    assert r.defer_reason is None
     assert len(r.reason_lines) == 2
     assert r.numbers_cited == ["corner_ratio=0.41"]
 
@@ -26,37 +44,60 @@ def test_parse_fenced_json():
     r = parse_audit_response(raw)
     assert r.status == "VERIFIED"
     assert r.error is None
+    assert r.defer_reason is None
 
 
-def test_bad_status_defers():
+def test_valid_defer_is_evidence_ambiguous():
+    raw = """{
+      "status": "DEFER",
+      "reason_lines": ["Mixed attention.", "Doctor owns the call."],
+      "numbers_cited": []
+    }"""
+    r = parse_audit_response(raw)
+    assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_EVIDENCE
+    assert r.error is None
+
+
+def test_malformed_json_is_audit_unavailable():
+    r = parse_audit_response("not json at all")
+    assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
+
+
+def test_schema_invalid_json_is_audit_unavailable():
     raw = '{"status":"TRUST","reason_lines":["a","b"],"numbers_cited":[]}'
     r = parse_audit_response(raw)
     assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
     assert r.error is not None
 
 
 def test_empty_defers():
     r = parse_audit_response("")
     assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
 
 
 def test_fail_closed_shape():
     r = fail_closed("boom")
     assert r.status == "DEFER"
     assert r.error == "boom"
+    assert r.defer_reason == DEFER_UNAVAILABLE
     assert len(r.reason_lines) >= 2
 
 
 def test_json_array_root_defers():
     r = parse_audit_response("[]")
     assert r.status == "DEFER"
-    assert r.error is not None
+    assert r.defer_reason == DEFER_UNAVAILABLE
 
 
 def test_four_reason_lines_defers():
     raw = json_blob(4)
     r = parse_audit_response(raw)
     assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
 
 
 def test_flagged_without_numbers_defers():
@@ -67,6 +108,262 @@ def test_flagged_without_numbers_defers():
     }"""
     r = parse_audit_response(raw)
     assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
+
+
+def test_missing_api_key_is_audit_unavailable(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    r = audit_tile(
+        score=0.95,
+        verdict="POSITIVE",
+        metrics=_METRICS,
+        api_key=None,
+    )
+    assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
+    assert "ANTHROPIC_API_KEY" in (r.error or "")
+
+
+def test_image_png_builds_anthropic_block(monkeypatch):
+    captured: dict = {}
+    ok_json = (
+        '{"status":"VERIFIED","reason_lines":["On tissue.","Map agrees."],'
+        '"numbers_cited":["topk_mass=0.40"]}'
+    )
+
+    class _Msg:
+        content = [types.SimpleNamespace(type="text", text=ok_json)]
+
+    class _Messages:
+        def create(self, **kwargs):
+            captured["content"] = kwargs["messages"][0]["content"]
+            captured["system"] = kwargs["system"]
+            return _Msg()
+
+    class _Client:
+        def __init__(self, **kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    r = audit_tile(
+        score=0.95,
+        verdict="POSITIVE",
+        metrics=_METRICS,
+        image_png=png,
+        api_key="test-key-not-real",
+    )
+    assert r.status == "VERIFIED"
+    assert captured["content"][0]["type"] == "image"
+    src = captured["content"][0]["source"]
+    assert src["type"] == "base64"
+    assert src["media_type"] == "image/png"
+    assert src["data"] == base64.standard_b64encode(png).decode("ascii")
+    assert isinstance(captured["system"], str)
+    assert "attention" in captured["system"].lower()
+
+
+def test_fake_anthropic_success_returns_status(monkeypatch):
+    ok_json = (
+        '{"status":"FLAGGED","reason_lines":["Corner pile-up.","Needs review."],'
+        '"numbers_cited":["corner_ratio=0.41"]}'
+    )
+    create_mock = MagicMock(
+        return_value=types.SimpleNamespace(
+            content=[types.SimpleNamespace(type="text", text=ok_json)]
+        )
+    )
+
+    class _Messages:
+        create = create_mock
+
+    class _Client:
+        def __init__(self, **kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    r = audit_tile(
+        score=0.99,
+        verdict="POSITIVE",
+        metrics=_METRICS,
+        api_key="test-key-not-real",
+    )
+    assert r.status == "FLAGGED"
+    assert r.defer_reason is None
+    create_mock.assert_called_once()
+
+
+def test_to_dict_includes_defer_reason():
+    r = fail_closed("x")
+    d = r.to_dict()
+    assert d["defer_reason"] == DEFER_UNAVAILABLE
+    assert "status" in d
+
+
+def test_plain_reason_line_maps_metric_fields():
+    assert plain_reason_line("corner_ratio is high") == "corner heat is high"
+    assert plain_reason_line("edge_ratio=0.19") == "edge heat=0.19"
+    assert plain_reason_line("topk_mass low") == "focus concentration low"
+    assert "corner_ratio" not in plain_reason_line("corner_ratio and edge_ratio")
+
+
+def test_normalize_followup_question_guards():
+    assert normalize_followup_question("  Why?  ") == "Why?"
+    try:
+        normalize_followup_question("   ")
+        assert False, "expected empty rejection"
+    except ValueError:
+        pass
+    try:
+        normalize_followup_question("x" * (MAX_FOLLOWUP_CHARS + 1))
+        assert False, "expected length rejection"
+    except ValueError:
+        pass
+
+
+def test_followup_success_fake_anthropic(monkeypatch):
+    create_mock = MagicMock(
+        return_value=types.SimpleNamespace(
+            content=[
+                types.SimpleNamespace(
+                    type="text",
+                    text="Attention sits on the corner. That is why trust is low.",
+                )
+            ]
+        )
+    )
+
+    class _Messages:
+        create = create_mock
+
+    class _Client:
+        def __init__(self, **kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+    answer, err = follow_up_attention(
+        score=0.99,
+        tier="POSITIVE",
+        metrics=_METRICS,
+        audit_status="FLAGGED",
+        reason_lines=["Corner heat is high.", "Needs review."],
+        image_png=png,
+        question="Why flagged?",
+        api_key="test-key-not-real",
+    )
+    assert err is None
+    assert answer is not None
+    assert "corner" in answer.lower() or "attention" in answer.lower()
+    create_mock.assert_called_once()
+    kwargs = create_mock.call_args.kwargs
+    assert isinstance(kwargs.get("system"), str)
+    assert "diagnose" in kwargs["system"].lower() or "Never diagnose" in kwargs["system"]
+
+
+def test_followup_missing_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    answer, err = follow_up_attention(
+        score=0.9,
+        tier="POSITIVE",
+        metrics=_METRICS,
+        audit_status="VERIFIED",
+        reason_lines=["a", "b"],
+        image_png=b"png",
+        question="Why?",
+        api_key=None,
+    )
+    assert answer is None
+    assert err == "missing_key"
+
+
+def test_followup_api_failure(monkeypatch):
+    class _Messages:
+        def create(self, **kwargs):
+            raise RuntimeError("network down")
+
+    class _Client:
+        def __init__(self, **kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    answer, err = follow_up_attention(
+        score=0.9,
+        tier="POSITIVE",
+        metrics=_METRICS,
+        audit_status="VERIFIED",
+        reason_lines=["a", "b"],
+        image_png=b"png",
+        question="Why?",
+        api_key="test-key-not-real",
+    )
+    assert answer is None
+    assert err == "api_error"
+
+
+def test_followup_empty_response(monkeypatch):
+    class _Messages:
+        def create(self, **kwargs):
+            return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text="  ")])
+
+    class _Client:
+        def __init__(self, **kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    answer, err = follow_up_attention(
+        score=0.9,
+        tier="POSITIVE",
+        metrics=_METRICS,
+        audit_status="VERIFIED",
+        reason_lines=["a", "b"],
+        image_png=b"png",
+        question="Why?",
+        api_key="test-key-not-real",
+    )
+    assert answer is None
+    assert err == "empty_response"
+
+
+def test_followup_question_length_guard():
+    answer, err = follow_up_attention(
+        score=0.9,
+        tier="POSITIVE",
+        metrics=_METRICS,
+        audit_status="VERIFIED",
+        reason_lines=["a", "b"],
+        image_png=b"png",
+        question="x" * (MAX_FOLLOWUP_CHARS + 5),
+        api_key="test-key-not-real",
+    )
+    assert answer is None
+    assert err is not None
+    assert "300" in err or "character" in err
+
+
+def test_followup_cache_key_shape():
+    """Session chat cache keys by evidence hash + normalized question."""
+    ehash = "abc123"
+    q1 = "  Why is this flagged? "
+    q2 = "Why is this flagged?"
+    norm1 = " ".join(q1.split()).lower()
+    norm2 = " ".join(q2.split()).lower()
+    assert (ehash, norm1) == (ehash, norm2)
 
 
 def json_blob(n_reasons: int) -> str:
