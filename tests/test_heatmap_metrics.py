@@ -81,3 +81,12 @@ def test_corner_before_higher_than_tissue_after():
     a = compute_heatmap_metrics(after)
     assert b["corner_ratio"] > a["corner_ratio"]
     assert a["topk_mass"] >= b["topk_mass"] * 0.5
+
+
+def test_uniform_100_canonical_corner_edge():
+    cam = np.ones((100, 100), dtype=np.float64)
+    m = compute_heatmap_metrics(cam)
+    assert m["corner_frac"] == 0.15
+    assert m["edge_frac"] == 0.08
+    assert m["corner_ratio"] == pytest.approx(0.09)
+    assert m["edge_ratio"] == pytest.approx(0.2944)

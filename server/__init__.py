@@ -1,0 +1,1 @@
+"""SecondLook FastAPI server."""
