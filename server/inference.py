@@ -109,7 +109,7 @@ class InferencePipeline:
             metrics=metrics,
             overlay_png=overlay_png,
             original_png=original_png,
-            evidence_hash=build_evidence_hash(model_id, score, metrics),
+            evidence_hash=build_evidence_hash(model_id, score, metrics, image_bytes),
         )
 
 
@@ -167,13 +167,19 @@ def png_data_url(image_png: bytes) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
-def build_evidence_hash(model_id: ModelId, score: float, metrics: Metrics) -> str:
+def build_evidence_hash(
+    model_id: ModelId,
+    score: float,
+    metrics: Metrics,
+    image_bytes: bytes,
+) -> str:
     payload = {
         "model": model_id,
         "score": f"{float(score):.8f}",
         "metrics": {
             key: f"{float(getattr(metrics, key)):.8f}" for key in _METRIC_KEYS
         },
+        "image_sha256": hashlib.sha256(image_bytes).hexdigest(),
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:8]
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

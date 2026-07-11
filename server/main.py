@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from PIL import UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
 from server import cache
@@ -123,7 +123,13 @@ async def _read_image_input(
         raise HTTPException(status_code=400, detail="image is empty")
     try:
         validate_upload(image_bytes, file.content_type)
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+    except (
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+        OSError,
+        SyntaxError,
+        ValueError,
+    ) as exc:
         raise HTTPException(status_code=400, detail="invalid image") from exc
     return image_bytes
 
@@ -142,7 +148,13 @@ async def score(
             image_bytes,
             model,
         )
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+    except (
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+        OSError,
+        SyntaxError,
+        ValueError,
+    ) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         _LOGGER.exception("score failed")
@@ -165,7 +177,13 @@ async def analyze(
             image_bytes,
             model,
         )
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+    except (
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+        OSError,
+        SyntaxError,
+        ValueError,
+    ) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         _LOGGER.exception("analysis failed")
@@ -200,7 +218,10 @@ def audit(body: AuditRequest) -> AuditResponse:
     call_tier = body.call_tier or record.tier
     if call_tier != "POSITIVE":
         raise HTTPException(status_code=409, detail="audit requires a POSITIVE call tier")
-    if record.audit is not None:
+    # Slider may lift UNCERTAIN into POSITIVE; never force audit on a true NEGATIVE.
+    if record.tier == "NEGATIVE":
+        raise HTTPException(status_code=409, detail="audit requires a POSITIVE call tier")
+    if record.audit is not None and record.audit.status != "DEFER":
         return record.audit
 
     result = audit_tile(
@@ -218,7 +239,8 @@ def audit(body: AuditRequest) -> AuditResponse:
         numbers_cited=result.numbers_cited,
         defer_reason=result.defer_reason,
     )
-    cache.set_audit(body.evidence_hash, response)
+    if response.status != "DEFER":
+        cache.set_audit(body.evidence_hash, response)
     return response
 
 

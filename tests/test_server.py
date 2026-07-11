@@ -1,6 +1,7 @@
 """FastAPI server tests."""
 
 import io
+from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -11,7 +12,7 @@ from PIL import Image
 from server import cache
 from server import main as server_main
 from server.cache import AnalysisRecord
-from server.inference import CANONICAL_TILES, InferenceResult
+from server.inference import CANONICAL_TILES, InferenceResult, build_evidence_hash
 from server.schemas import AuditResponse, Metrics
 from src.trust.auditor import AuditResult
 
@@ -41,7 +42,7 @@ class FakePipeline:
 
 @pytest.fixture(autouse=True)
 def isolated_cache(monkeypatch):
-    monkeypatch.setattr(cache, "_RECORDS", {})
+    monkeypatch.setattr(cache, "_RECORDS", OrderedDict())
 
 
 @pytest.fixture
@@ -316,6 +317,21 @@ def test_audit_allows_call_tier_positive_when_stored_uncertain(client, monkeypat
     )
 
 
+def test_audit_rejects_call_tier_positive_when_stored_negative(client, monkeypatch):
+    _put_record(tier="NEGATIVE", score=0.05)
+    audit = Mock()
+    monkeypatch.setattr(server_main, "audit_tile", audit)
+
+    response = client.post(
+        "/api/audit",
+        json={"evidence_hash": "evidence", "call_tier": "POSITIVE"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "audit requires a POSITIVE call tier"
+    audit.assert_not_called()
+
+
 def test_audit_fail_closed_omits_internal_error(client, monkeypatch):
     _put_record()
     monkeypatch.setattr(
@@ -367,6 +383,57 @@ def test_audit_reuses_cached_result(client, monkeypatch):
         image_png=b"overlay",
         model_id="after",
     )
+
+
+def test_audit_does_not_cache_or_reuse_defer(client, monkeypatch):
+    _put_record()
+    audit = Mock(
+        return_value=AuditResult(
+            status="DEFER",
+            reason_lines=["Evidence unclear."],
+            numbers_cited=[],
+            defer_reason="EVIDENCE_AMBIGUOUS",
+        )
+    )
+    monkeypatch.setattr(server_main, "audit_tile", audit)
+
+    first = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    second = client.post("/api/audit", json={"evidence_hash": "evidence"})
+
+    assert first.status_code == 200
+    assert first.json()["status"] == "DEFER"
+    assert second.json()["status"] == "DEFER"
+    assert audit.call_count == 2
+    assert cache.get("evidence").audit is None
+
+
+def test_cache_evicts_oldest_past_max(monkeypatch):
+    monkeypatch.setattr(cache, "MAX_RECORDS", 2)
+    monkeypatch.setattr(cache, "_RECORDS", OrderedDict())
+    for i in range(3):
+        cache.put(
+            f"h{i}",
+            AnalysisRecord(
+                overlay_png=b"o",
+                score=0.1 * i,
+                tier="POSITIVE",
+                metrics={"topk_mass": 0.1, "corner_ratio": 0.1, "edge_ratio": 0.1},
+                model="after",
+            ),
+        )
+    assert cache.get("h0") is None
+    assert cache.get("h1") is not None
+    assert cache.get("h2") is not None
+
+
+def test_evidence_hash_includes_image_and_is_full_digest():
+    metrics = Metrics(topk_mass=0.12, corner_ratio=0.08, edge_ratio=0.21)
+    a = build_evidence_hash("after", 0.91, metrics, b"tile-a")
+    b = build_evidence_hash("after", 0.91, metrics, b"tile-b")
+    same = build_evidence_hash("after", 0.91, metrics, b"tile-a")
+    assert len(a) == 64
+    assert a != b
+    assert a == same
 
 
 def test_ask_requires_cached_audit(client, monkeypatch):
