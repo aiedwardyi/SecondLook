@@ -29,7 +29,7 @@ if not exist experiments\%MODEL%\best.pth (
     exit /b 1
 )
 
-python -m scripts.evaluate_bcc --run-dir experiments\%MODEL% --csv-path splits\heidelberg_bcc.csv --data-root . || exit /b
+python -m scripts.evaluate_bcc --run-dir experiments\%MODEL% --csv-path splits\heidelberg_bcc.csv --data-root data || exit /b
 
 popd
 endlocal
