@@ -20,8 +20,8 @@ if exist .\.venv\Scripts\Activate.bat (
 ) else (
     echo INFO: .venv not found at .\.venv; using current python on PATH.
 )
-if not exist experiments\%MODEL%\best.pth (
-    echo No trained %MODEL% model found at experiments\%MODEL%. Run train.bat %MODEL% first.
+if not exist experiments\%MODEL%\log.jsonl (
+    echo No run log for %MODEL% at experiments\%MODEL%\log.jsonl. Run train.bat %MODEL% first.
     exit /b 1
 )
 python -m scripts.show_results --run-dir experiments\%MODEL%
