@@ -155,10 +155,14 @@ def format_metrics_block(metrics: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def align_reason_metric_labels(reasons: list[str], metrics: dict[str, Any]) -> list[str]:
-    """Force intensity words near a metric % to match UI bands.
+# Words allowed between an intensity adjective and "at N%" (metric-tied only).
+_METRIC_LINK_WORDS = r"corner|edge|focus|concentration|heat|is"
 
-    Catches free paraphrases, e.g. "low focus at 18%" not only "focus concentration is low at 18%".
+
+def align_reason_metric_labels(reasons: list[str], metrics: dict[str, Any]) -> list[str]:
+    """Force intensity words tied to a metric % to match UI bands.
+
+    Zero gap ("high at 21%") or metric-noun gap only ("low focus at 18%") - never arbitrary words.
     """
     pct_to_level: dict[int, str] = {}
     for field, _plain in _FIELD_TO_PLAIN:
@@ -168,19 +172,23 @@ def align_reason_metric_labels(reasons: list[str], metrics: dict[str, Any]) -> l
         pct_to_level[int(round(value * 100))] = metric_level(value)
 
     word_alt = "|".join(_INTENSITY_WORDS)
+    # intensity + optional metric links + at N%  (not arbitrary \\w+)
+    before_pct = (
+        rf"(?i)\b({word_alt})\b((?:\s+(?:{_METRIC_LINK_WORDS}))*)"
+        rf"\s+at\s+(?:about\s+)?{{pct}}\s*%"
+    )
+    after_pct = rf"(?i)(at\s+(?:about\s+)?{{pct}}\s*%\s+)({word_alt})\b"
     aligned: list[str] = []
     for line in reasons:
         fixed = str(line)
         for pct, level in pct_to_level.items():
-            # "low focus at 18%" / "is high at 21%" / "elevated at 37%"
             fixed = re.sub(
-                rf"(?i)\b({word_alt})\b((?:\s+\w+){{0,4}})\s+at\s+(?:about\s+)?{pct}\s*%",
+                before_pct.format(pct=pct),
                 rf"{level}\2 at {pct}%",
                 fixed,
             )
-            # "at 18% low focus" / "at about 21% high"
             fixed = re.sub(
-                rf"(?i)(at\s+(?:about\s+)?{pct}\s*%\s+)({word_alt})\b",
+                after_pct.format(pct=pct),
                 rf"\1{level}",
                 fixed,
             )

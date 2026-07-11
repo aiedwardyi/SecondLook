@@ -338,6 +338,7 @@ function metricLevel(frac) {
 }
 
 const INTENSITY_WORDS = 'low|modest|high|elevated|moderate|mild|strong';
+const METRIC_LINK_WORDS = 'corner|edge|focus|concentration|heat|is';
 
 function alignReasonLine(line, metrics) {
   if (!line || !metrics) return line || '';
@@ -346,8 +347,12 @@ function alignReasonLine(line, metrics) {
     .filter((v) => v != null && Number.isFinite(Number(v)))
     .map((v) => ({ pct: Math.round(Number(v) * 100), level: metricLevel(v) }));
   for (const { pct, level } of pcts) {
+    // intensity + optional metric nouns only + at N% (not arbitrary words)
     s = s.replace(
-      new RegExp('\\b(' + INTENSITY_WORDS + ')\\b((?:\\s+\\w+){0,4})\\s+at\\s+(?:about\\s+)?' + pct + '\\s*%', 'gi'),
+      new RegExp(
+        '\\b(' + INTENSITY_WORDS + ')\\b((?:\\s+(?:' + METRIC_LINK_WORDS + '))*)\\s+at\\s+(?:about\\s+)?' + pct + '\\s*%',
+        'gi'
+      ),
       level + '$2 at ' + pct + '%'
     );
     s = s.replace(

@@ -251,6 +251,38 @@ def test_align_reason_metric_labels_fixes_mismatched_intensity():
     assert paraphrased[0] == "Attention is spread with modest focus at 18%."
 
 
+def test_align_reason_metric_labels_does_not_rewrite_unrelated_intensity():
+    from src.trust.auditor import align_reason_metric_labels
+
+    metrics = {
+        "topk_mass": 0.12,
+        "corner_ratio": 0.05,
+        "edge_ratio": 0.08,
+    }
+    line = "High confidence with tight focus at 12%."
+    assert align_reason_metric_labels([line], metrics) == [line]
+
+
+def test_align_reason_metric_labels_zero_gap_and_metric_anchor():
+    from src.trust.auditor import align_reason_metric_labels
+
+    metrics = {
+        "topk_mass": 0.21,
+        "corner_ratio": 0.21,
+        "edge_ratio": 0.10,
+    }
+    zero_gap = align_reason_metric_labels(
+        ["concentration is high at 21%."],
+        metrics,
+    )
+    assert zero_gap == ["concentration is modest at 21%."]
+    anchored = align_reason_metric_labels(
+        ["Corner heat is high at 21% with a bright hot spot."],
+        metrics,
+    )
+    assert anchored == ["Corner heat is modest at 21% with a bright hot spot."]
+
+
 def test_normalize_followup_question_guards():
     assert normalize_followup_question("  Why?  ") == "Why?"
     try:
