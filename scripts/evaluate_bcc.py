@@ -43,7 +43,7 @@ def parse_args() -> argparse.Namespace:
         "--run-dir",
         type=Path,
         required=True,
-        help="Path to experiments/bcc/run_NNN/. Default source of best.pth "
+        help="Path to experiments/<before|after>/. Default source of best.pth "
         "(overridable via --checkpoint) and default eval/ output (overridable "
         "via --output-dir).",
     )

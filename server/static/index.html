@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecondLook</title>
+<style>
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+    --bg:#0E1116; --panel:#12151B; --surface:#151923; --surface2:#1A1F29;
+    --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.14);
+    --text:#E9ECF2; --text2:#A7AFBD; --text3:#707A89;
+    --accent:#7CA5EC; --onaccent:#0D1420; --hov:rgba(255,255,255,.045); --chipbg:rgba(255,255,255,.05);
+    --ok:#4FBF8B; --ok-bg:rgba(79,191,139,.09); --ok-line:rgba(79,191,139,.35);
+    --warn:#D9A83F; --warn-bg:rgba(217,168,63,.10); --warn-line:rgba(217,168,63,.38);
+    --defer:#9AA8DC; --defer-bg:rgba(154,168,220,.10); --defer-line:rgba(154,168,220,.35);
+    --pos:#E0716C; --pos-bg:rgba(224,113,108,.09); --pos-line:rgba(224,113,108,.35);
+    --shadow:0 18px 48px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.35);
+    --dim:rgba(5,7,11,.62);
+  }
+  body[data-theme="light"]{
+    --bg:#F2F3F6; --panel:#F8F9FB; --surface:#FFFFFF; --surface2:#F5F6F9;
+    --line:rgba(18,26,40,.10); --line2:rgba(18,26,40,.19);
+    --text:#171E29; --text2:#49556A; --text3:#6E7A8F;
+    --accent:#2D5FC4; --onaccent:#FFFFFF; --hov:rgba(18,26,40,.045); --chipbg:rgba(18,26,40,.05);
+    --ok:#177A50; --ok-bg:rgba(23,122,80,.07); --ok-line:rgba(23,122,80,.32);
+    --warn:#96660F; --warn-bg:rgba(150,102,15,.08); --warn-line:rgba(150,102,15,.32);
+    --defer:#4C5CA8; --defer-bg:rgba(76,92,168,.08); --defer-line:rgba(76,92,168,.32);
+    --pos:#B0392F; --pos-bg:rgba(176,57,47,.07); --pos-line:rgba(176,57,47,.30);
+    --shadow:0 18px 48px rgba(23,32,48,.16),0 2px 8px rgba(23,32,48,.08);
+    --dim:rgba(23,30,44,.42);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg)}
+  body{font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ::selection{background:rgba(124,165,236,.28)}
+  *{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:3px solid transparent;background-clip:content-box}
+  button{font-family:inherit;cursor:pointer}
+  input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;background:var(--line2);outline:none;cursor:pointer;padding:0;margin:8px 0 0}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:0;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:0}
+
+  @keyframes skPulse{0%,100%{opacity:.35}50%{opacity:.85}}
+  @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.2}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes dialogIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+  @keyframes rowIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @keyframes pipPulse{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}}
+
+  .app{display:flex;height:100vh;overflow:hidden}
+  .sidebar{width:296px;flex:none;height:100%;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .sb-top{padding:22px 22px 18px;flex:1}
+  .sb-title-row{display:flex;align-items:center;justify-content:space-between}
+  .sb-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:none;color:var(--text3);font-size:13px;line-height:1}
+  .icon-btn:hover{background:var(--hov);color:var(--text)}
+  .hr{height:1px;background:var(--line);margin:18px 0}
+  .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.09em;color:var(--text3);text-transform:uppercase}
+  .radio-btn{display:flex;align-items:center;gap:9px;background:none;border:0;padding:4px 0;color:var(--text2);font-size:13px;text-align:left}
+  .radio-btn.on{color:var(--text)}
+  .radio-btn:disabled,.radio-btn.disabled{opacity:.45;cursor:not-allowed;color:var(--text3)}
+  .radio-btn:disabled.on,.radio-btn.disabled.on{color:var(--text3)}
+  .radio-ring{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--line2);display:inline-flex;align-items:center;justify-content:center;flex:none;transition:border-color .15s}
+  .radio-btn.on .radio-ring{border-color:var(--accent)}
+  .radio-btn:disabled .radio-ring,.radio-btn.disabled .radio-ring{border-color:var(--line)}
+  .radio-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .15s}
+  .radio-btn.on .radio-dot{opacity:1}
+  .radio-btn:disabled.on .radio-dot,.radio-btn.disabled.on .radio-dot{opacity:.4}
+  .chip-cuda{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-line);padding:2px 7px;border-radius:5px}
+  .sb-note{font-size:12px;color:var(--text3);line-height:1.5;margin-top:6px}
+  .sb-err{font-size:12px;color:var(--pos);line-height:1.5;margin-top:14px;padding:8px 10px;border-radius:8px;background:var(--pos-bg);border:1px solid var(--pos-line)}
+  .thresh-row{display:flex;justify-content:space-between;align-items:baseline}
+  .thresh-label{font-size:12px;color:var(--text2)}
+  .thresh-val{font-family:var(--mono);font-size:12px;color:var(--text)}
+  .fineprint{font-size:11.5px;color:var(--text3);line-height:1.55}
+
+  .queue-sec{border-top:1px solid var(--line);padding:16px 22px 20px}
+  .queue-head{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:0;color:var(--text);font-size:13px;font-weight:600}
+  .queue-badge{font-family:var(--mono);font-size:11px;font-weight:600;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:0 6px;color:var(--text);background:var(--chipbg);border:1px solid var(--line2)}
+  .queue-badge.pulse{animation:pipPulse .5s ease}
+  .chev{width:7px;height:7px;border-right:1.5px solid var(--text3);border-bottom:1.5px solid var(--text3);transform:rotate(-45deg);transition:transform .2s ease;margin-top:-2px}
+  .chev.open{transform:rotate(45deg)}
+  .queue-item{border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:10px 11px}
+  .queue-item.fresh{animation:rowIn .34s ease both}
+  .queue-thumb{width:42px;height:42px;border-radius:8px;border:1px solid var(--line);flex:none;background-color:#000;background-size:cover;background-position:center}
+  .queue-open-btn{margin-top:9px;width:100%;padding:5px 0;font-size:11.5px;font-weight:600;color:var(--text2);background:none;border:1px solid var(--line2);border-radius:7px}
+  .queue-open-btn:hover{background:var(--hov);color:var(--text)}
+
+  .main{flex:1;min-width:0;height:100%;overflow-y:auto;position:relative}
+  .content{max-width:960px;margin:0 auto;padding:34px 56px 150px}
+  .h1{margin:0;font-size:28px;font-weight:600;letter-spacing:-.02em}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--chipbg)}
+  .seg button{padding:4px 12px;font-size:11.5px;font-weight:600;border:0;border-radius:7px;background:transparent;color:var(--text3)}
+  .seg button.on{background:var(--surface2);color:var(--text)}
+  body[data-theme="light"] .seg button.on{background:var(--surface)}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:20px}
+  .tab{position:relative;background:none;border:0;padding:9px 14px 11px;font-size:13.5px;font-weight:500;color:var(--text3)}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--text)}
+  .tab .u{position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent);opacity:0;transition:opacity .18s}
+  .tab.on .u{opacity:1}
+
+  .dropzone{display:flex;align-items:center;gap:14px;padding:13px 16px;border:1px dashed var(--line2);border-radius:12px;background:var(--surface);cursor:pointer;transition:border-color .18s;margin-top:8px}
+  .dropzone:hover{border-color:var(--accent)}
+  .btn{padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--line2);border-radius:9px}
+  .btn:hover{background:var(--hov)}
+  .btn-primary{padding:7px 14px;font-size:12px;font-weight:600;color:var(--onaccent);background:var(--accent);border:0;border-radius:9px}
+  .btn-ghost{padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);background:none;border:1px solid var(--line2);border-radius:9px}
+  .btn-ghost:hover{color:var(--text);background:var(--hov)}
+
+  .ex-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .ex-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:10px;display:flex;flex-direction:column;gap:9px}
+  .ex-img{width:100%;aspect-ratio:1;border-radius:9px;border:1px solid var(--line);background-color:#000;background-size:cover;background-position:center}
+  .ex-score-track{position:relative;height:7px;border-radius:999px;background:var(--text2);overflow:visible;margin:4px 1px 2px}
+  body[data-theme="light"] .ex-score-track{background:var(--line2)}
+  .ex-score-threshold{position:absolute;top:-5px;bottom:-5px;width:1.5px;border-radius:1px;background:var(--text);opacity:.55;transform:translateX(-50%)}
+  body[data-theme="light"] .ex-score-threshold{opacity:.4}
+  .ex-score-dot{position:absolute;top:50%;z-index:1;width:13px;height:13px;border-radius:999px;background:var(--surface);border:2px solid var(--text);box-shadow:0 0 0 1px var(--line2),0 1px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%)}
+  body[data-theme="light"] .ex-score-dot{box-shadow:0 0 0 1px var(--line2),0 1px 3px rgba(23,32,48,.18)}
+  .ex-chip{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.07em;padding:2px 7px;border-radius:5px}
+  .ex-analyze{width:100%;padding:6px 0;font-size:12px;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--line2);border-radius:8px}
+  .ex-analyze:hover{background:var(--hov);border-color:var(--accent)}
+
+  .select{width:100%;margin-top:8px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line2);border-radius:10px;outline:none;cursor:pointer}
+
+  .banner{display:flex;align-items:center;gap:11px;padding:12px 18px;border-radius:12px;border:1px solid}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  .figcap{font-size:10.5px;font-weight:600;letter-spacing:.09em;color:var(--text3);text-transform:uppercase;margin-bottom:7px}
+  .tile-img{width:100%;aspect-ratio:1;border-radius:12px;border:1px solid var(--line);background-color:#000;background-size:cover;background-position:center}
+
+  .strip{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+  .strip-pill{flex:none;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text3);border:1px solid var(--line2);border-radius:999px;padding:3px 9px;text-transform:uppercase}
+
+  .card{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+  .card.enter{animation:fadeUp .26s ease}
+  .card-body{padding:16px 20px 15px;min-height:150px}
+  .card-foot{display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--line);background:var(--surface2)}
+  .card-foot-note{font-size:11.5px;color:var(--text3)}
+  .src-chip{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:999px}
+  .src-live{color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-line)}
+  .src-cached{color:var(--text3);background:var(--chipbg);border:1px solid var(--line2)}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+  .live-dot.pulsing{animation:livePulse 1.4s ease-in-out infinite}
+  .status-pill{font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 11px;border-radius:999px;border:1px solid}
+  .spinner{width:13px;height:13px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin 1s linear infinite;flex:none}
+  .sk{height:11px;border-radius:6px;background:var(--chipbg);animation:skPulse 1.6s ease-in-out infinite}
+  .routed{display:flex;align-items:center;gap:9px;margin-top:13px;padding:9px 13px;border-radius:10px;background:var(--chipbg);border:1px solid var(--line);animation:rowIn .3s ease}
+  .ev-toggle{display:flex;align-items:center;gap:9px;margin-top:14px;background:none;border:0;padding:2px 0;color:var(--text2);font-size:12.5px;font-weight:600}
+  .ev-toggle:hover{color:var(--text)}
+  .ev-toggle .chev{border-color:currentColor;margin-top:-1px}
+  .ev-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.25,.7,.3,1)}
+  .ev-wrap.open{grid-template-rows:1fr}
+  .ev-inner{overflow:hidden;min-height:0}
+  .metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:13px}
+  .metric{background:var(--surface2);padding:11px 14px}
+  .metric .k{font-size:10px;font-weight:600;letter-spacing:.07em;color:var(--text3);text-transform:uppercase}
+  .metric .v{font-size:19px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text)}
+  .metric .d{font-size:11px;color:var(--text3);margin-top:2px}
+  .meta-line{margin-top:13px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--text3)}
+  .ask-btn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface);border:1px solid var(--line2);border-radius:999px;flex:none}
+  .ask-btn:hover{color:var(--text);border-color:var(--accent)}
+  .ask-btn .chev{border-color:currentColor;transform:rotate(-135deg);margin-top:3px}
+  .ask-btn.open .chev{transform:rotate(45deg);margin-top:-3px}
+
+  .ask-panel{position:fixed;right:26px;bottom:26px;width:396px;max-height:72vh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow);z-index:70;animation:fadeUp .24s cubic-bezier(.2,.8,.3,1);overflow:hidden}
+  .ask-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+  .ask-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+  .msg-who{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--text3);text-transform:uppercase}
+  .msg-you{font-size:12.5px;line-height:1.55;color:var(--text);background:var(--chipbg);border:1px solid var(--line);border-radius:11px;padding:8px 11px;max-width:92%}
+  .msg-claude{font-size:12.5px;line-height:1.55;color:var(--text2);max-width:92%}
+  .chips{display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap}
+  .chip-q{padding:6px 11px;font-size:11.5px;font-weight:500;color:var(--text2);background:var(--chipbg);border:1px solid var(--line);border-radius:999px}
+  .chip-q:hover{color:var(--text);border-color:var(--line2)}
+  .ask-foot{padding:10px 12px;border-top:1px solid var(--line)}
+  .ask-input{flex:1;min-width:0;padding:8px 11px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:9px;outline:none}
+
+  .overlay{position:fixed;inset:0;background:var(--dim);z-index:90;animation:fadeIn .2s ease;overflow-y:auto;padding:6vh 20px 40px}
+  .dialog{max-width:680px;margin:0 auto;background:var(--surface);border:1px solid var(--line2);border-radius:18px;box-shadow:var(--shadow);animation:dialogIn .26s cubic-bezier(.2,.8,.25,1);overflow:hidden}
+  .dlg-head{display:flex;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .dlg-banner{display:flex;align-items:center;gap:10px;margin-top:16px;padding:10px 14px;border:1px solid;border-radius:10px}
+  .dlg-metrics .metric{padding:9px 13px}
+  .dlg-metrics .metric .k{font-size:9.5px}
+  .dlg-metrics .metric .v{font-size:16px;margin-top:3px}
+  .dlg-foot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);background:var(--surface2)}
+
+  .sb-expand{position:fixed;left:14px;top:14px;z-index:40;width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--text2);font-size:13px}
+  .sb-expand:hover{color:var(--text);background:var(--hov)}
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--text3)}
+  .pending{font-size:12px;color:var(--text3);animation:skPulse 1.4s ease-in-out infinite}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="app" id="app"></div>
+<div id="askRoot"></div>
+<div id="dialogRoot"></div>
+
+<script>
+'use strict';
+
+// API helpers
+
+async function apiError(response, fallback) {
+  try {
+    const payload = await response.json();
+    return new Error(payload.detail || payload.error || fallback);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+async function getAnalysis(file, model) {
+  const body = new FormData();
+  body.append('model', model);
+  if (file instanceof File) body.append('file', file);
+  else body.append('tile_id', file);
+  const response = await fetch('/api/analyze', { method: 'POST', body });
+  if (!response.ok) throw await apiError(response, 'Analyze request failed');
+  return response.json();
+}
+
+async function getScore(tileId, model) {
+  const body = new FormData();
+  body.append('model', model);
+  body.append('tile_id', tileId);
+  const response = await fetch('/api/score', { method: 'POST', body });
+  if (!response.ok) throw await apiError(response, 'Score request failed');
+  return response.json();
+}
+
+async function getAudit(analysis, callTier) {
+  const response = await fetch('/api/audit', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      evidence_hash: analysis.evidence_hash,
+      call_tier: callTier || 'POSITIVE',
+    }),
+  });
+  if (!response.ok) throw await apiError(response, 'Audit request failed');
+  return response.json();
+}
+
+async function getAskClaude(question, context) {
+  const response = await fetch('/api/ask', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evidence_hash: context.evidence_hash, question }),
+  });
+  if (!response.ok) throw await apiError(response, 'Ask request failed');
+  return response.json();
+}
+
+// State and helpers
+
+const QA_CHIPS = {
+  VERIFIED: ['Why did this pass?', 'What about the edge heat?'],
+  FLAGGED: ['Why was this flagged?', 'What should I check first?'],
+  DEFER: ['Why is this unresolved?', 'What made the evidence unclear?'],
+};
+const TONE = {
+  VERIFIED: 'ok', FLAGGED: 'warn', DEFER: 'defer',
+  POSITIVE: 'pos', NEGATIVE: 'ok', UNCERTAIN: 'warn',
+};
+const FILE_LABELS = {
+  'positive-1': 'Positive 1', 'positive-2': 'Positive 2', 'positive-3': 'Positive 3',
+  'borderline-1': 'Borderline 1', 'borderline-2': 'Borderline 2', 'borderline-3': 'Borderline 3',
+  'negative-1': 'Negative 1', 'negative-2': 'Negative 2', 'negative-3': 'Negative 3',
+};
+const GALLERY_TILES = [
+  { id: 'positive-1', group: 'Positive examples' },
+  { id: 'positive-2', group: 'Positive examples' },
+  { id: 'positive-3', group: 'Positive examples' },
+  { id: 'borderline-1', group: 'Borderline examples' },
+  { id: 'borderline-2', group: 'Borderline examples' },
+  { id: 'borderline-3', group: 'Borderline examples' },
+  { id: 'negative-1', group: 'Negative examples' },
+  { id: 'negative-2', group: 'Negative examples' },
+  { id: 'negative-3', group: 'Negative examples' },
+];
+
+const GALLERY_ASSET_V = '3'; // bump to bust /api/tile cache
+
+const S = {
+  theme: 'dark', sbOpen: true, tab: 'single',
+  model: 'after', posT: 0.70, negT: 0.30,
+  cmpTile: 'positive-1', cmpModel: 'before',
+  current: null,
+  cache: {}, gallery: {},
+  queue: [], queueOpen: true, queuePulse: false,
+  evOpen: false, askOpen: false, msgs: [], askPending: false,
+  dialogKey: null,
+  trustEnterKey: null,
+  freshQueueKey: null,
+  examplesPick: false,
+  scrollMainTo: null,
+  auditPending: false,
+  device: null,
+};
+
+function tileUrl(tileId) {
+  return '/api/tile/' + encodeURIComponent(tileId) + '?v=' + GALLERY_ASSET_V;
+}
+let runSeq = 0;
+let uploadSeq = 0;
+const uploadIds = new WeakMap();
+const UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
+const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/tiff']);
+const UPLOAD_EXT = /\.(png|jpe?g|tiff?)$/i;
+
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const shortHash = (h) => String(h || '').slice(0, 8);
+const pct = (x) => Math.round(x * 100) + '%';
+const toneVars = (t) => ({ c: 'var(--' + t + ')', bg: 'var(--' + t + '-bg)', ln: 'var(--' + t + '-line)' });
+const nowUTC = () => new Date().toISOString().slice(11, 19) + ' UTC';
+const caseLabel = (file) => file instanceof File ? file.name : (FILE_LABELS[file] || file);
+const caseTag = (e) => (e.label || caseLabel(e.file)) + ' \u00b7 ' + e.model + ' model';
+
+const METRIC_LEVEL = { modest: 0.15, high: 0.30 };
+const METRIC_COPY = {
+  focus: { label: 'Focus concentration', def: "how tightly the model's attention is packed" },
+  corner: { label: 'Corner heat', def: 'how much the model looked at the corners' },
+  edge: { label: 'Edge heat', def: 'how much the model looked at the edges' },
+};
+
+function metricLevel(frac) {
+  const x = Number(frac);
+  if (!(x >= 0) || x < METRIC_LEVEL.modest) return 'low';
+  if (x < METRIC_LEVEL.high) return 'modest';
+  return 'high';
+}
+
+const INTENSITY_WORDS = 'low|modest|high|elevated|moderate|mild|strong';
+const METRIC_LINK_WORDS = 'corner|edge|focus|concentration|heat|is';
+
+function alignReasonLine(line, metrics) {
+  if (!line || !metrics) return line || '';
+  let s = String(line);
+  const pcts = [metrics.topk_mass, metrics.corner_ratio, metrics.edge_ratio]
+    .filter((v) => v != null && Number.isFinite(Number(v)))
+    .map((v) => ({ pct: Math.round(Number(v) * 100), level: metricLevel(v) }));
+  for (const { pct, level } of pcts) {
+    // intensity + optional metric nouns only + at N% (not arbitrary words)
+    s = s.replace(
+      new RegExp(
+        '\\b(' + INTENSITY_WORDS + ')\\b((?:\\s+(?:' + METRIC_LINK_WORDS + '))*)\\s+at\\s+(?:about\\s+)?' + pct + '\\s*%',
+        'gi'
+      ),
+      level + '$2 at ' + pct + '%'
+    );
+    s = s.replace(
+      new RegExp('(at\\s+(?:about\\s+)?' + pct + '\\s*%\\s+)(' + INTENSITY_WORDS + ')\\b', 'gi'),
+      '$1' + level
+    );
+  }
+  return s;
+}
+
+function reasonLineHTML(line, metrics) {
+  return esc(alignReasonLine(line, metrics));
+}
+
+function metricValueHTML(frac) {
+  return pct(frac) + ' <span style="font-size:12px;font-weight:600;color:var(--text3)">\u00b7 ' + metricLevel(frac) + '</span>';
+}
+
+function metricsBlockHTML(metrics, extraClass) {
+  const cls = 'metrics' + (extraClass ? ' ' + extraClass : '');
+  return '<div class="' + cls + '">' +
+    metricHTML(METRIC_COPY.focus.label, metricValueHTML(metrics.topk_mass), METRIC_COPY.focus.def) +
+    metricHTML(METRIC_COPY.corner.label, metricValueHTML(metrics.corner_ratio), METRIC_COPY.corner.def) +
+    metricHTML(METRIC_COPY.edge.label, metricValueHTML(metrics.edge_ratio), METRIC_COPY.edge.def) +
+    '</div>';
+}
+
+function fileId(file) {
+  if (!(file instanceof File)) return file;
+  if (!uploadIds.has(file)) uploadIds.set(file, 'upload-' + (++uploadSeq));
+  return uploadIds.get(file);
+}
+
+function caseKey(file, model) {
+  return fileId(file) + '|' + model;
+}
+
+function thresholdsOk() {
+  return S.negT < S.posT;
+}
+
+function tierForScore(score) {
+  const value = Math.round(score * 10000) / 10000;
+  if (value >= Math.round(S.posT * 10000) / 10000) return 'POSITIVE';
+  if (value <= Math.round(S.negT * 10000) / 10000) return 'NEGATIVE';
+  return 'UNCERTAIN';
+}
+
+function threshErrorText() {
+  return 'NEGATIVE threshold (' + S.negT.toFixed(2) + ') must be below POSITIVE threshold (' + S.posT.toFixed(2) + ').';
+}
+
+function errorText(error, fallback) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function statusOutcome(status) {
+  return status === 'VERIFIED' ? 'passed' : status === 'FLAGGED' ? 'failed' : 'unresolved';
+}
+
+// Case run
+
+async function analyzeCase(file, model, opts = {}) {
+  const key = caseKey(file, model);
+  if (S.cache[key] && !opts.forceLive && !opts.analysis) {
+    const cached = { ...S.cache[key], source: 'CACHED' };
+    if (opts.onUpdate) opts.onUpdate(cached);
+    return cached;
+  }
+
+  let entry = {
+    key, file, label: caseLabel(file), model, analysis: null, audit: null,
+    phase: 'analyzing', source: 'LIVE', latency: null, completed: null,
+  };
+  if (opts.onUpdate) opts.onUpdate(entry);
+
+  try {
+    const analysis = opts.analysis || await getAnalysis(file, model);
+    entry = { ...entry, analysis, serverTier: analysis.tier };
+    if (!(file instanceof File)) {
+      S.gallery[key] = {
+        thumb: tileUrl(file),
+        score: analysis.score,
+      };
+    }
+    if (tierForScore(analysis.score) === 'POSITIVE') {
+      entry.phase = 'auditing';
+      if (opts.onUpdate) opts.onUpdate(entry);
+      const t0 = performance.now();
+      const audit = await getAudit(analysis, 'POSITIVE');
+      entry = {
+        ...entry, audit, phase: 'done', completed: nowUTC(),
+        latency: ((performance.now() - t0) / 1000).toFixed(1) + ' s',
+      };
+    } else {
+      entry = { ...entry, phase: 'done', completed: nowUTC() };
+    }
+    S.cache[key] = { ...entry };
+    if (entry.audit && (entry.audit.status === 'FLAGGED' || entry.audit.status === 'DEFER')) {
+      addToQueue(key, opts.pulseQueue !== false);
+    }
+  } catch (error) {
+    entry = { ...entry, phase: 'error', error: errorText(error, 'Analysis failed') };
+  }
+  if (opts.onUpdate) opts.onUpdate(entry);
+  return entry;
+}
+
+async function runCase(file, model, opts = {}) {
+  if (!thresholdsOk()) { render(); return null; }
+  const runId = ++runSeq;
+  closeTransient();
+  S.evOpen = false;
+  const entry = await analyzeCase(file, model, {
+    ...opts,
+    onUpdate: (next) => {
+      if (runId !== runSeq) return;
+      S.current = { ...next, runId };
+      render();
+    },
+  });
+  return entry;
+}
+
+function addToQueue(key, pulse) {
+  const entry = S.cache[key];
+  if (!entry || !entry.audit || (entry.audit.status !== 'FLAGGED' && entry.audit.status !== 'DEFER')) return;
+  if (S.queue.includes(key)) return;
+  S.queue.unshift(key);
+  if (pulse) {
+    S.freshQueueKey = key; S.queuePulse = true; S.queueOpen = true;
+    setTimeout(() => {
+      S.queuePulse = false;
+      S.freshQueueKey = null;
+      const badge = document.querySelector('.queue-badge');
+      if (badge) badge.classList.remove('pulse');
+      const fresh = document.querySelector('.queue-item.fresh');
+      if (fresh) fresh.classList.remove('fresh');
+    }, 700);
+  }
+}
+
+function takeCardEnter(e) {
+  if (!e || !e.analysis || !e.audit) return false;
+  const k = (e.key || '') + '|' + e.analysis.evidence_hash;
+  if (S.trustEnterKey === k) return false;
+  S.trustEnterKey = k;
+  return true;
+}
+
+function closeTransient() {
+  S.askOpen = false; S.msgs = []; S.askPending = false; S.dialogKey = null;
+}
+
+function validUploads(files) {
+  const accepted = [];
+  const rejected = [];
+  for (const file of files) {
+    let reason = '';
+    if (!file.size) reason = 'File is empty.';
+    else if (file.size > UPLOAD_MAX_BYTES) reason = 'File exceeds 200 MB.';
+    else if (!UPLOAD_TYPES.has(file.type) && !UPLOAD_EXT.test(file.name)) reason = 'File type is not supported.';
+    if (reason) rejected.push(file.name + ': ' + reason);
+    else accepted.push(file);
+  }
+  if (rejected.length) window.alert(rejected.join('\n'));
+  return accepted;
+}
+
+function runSingleUpload(files) {
+  if (!thresholdsOk()) { render(); return; }
+  const accepted = validUploads(files);
+  if (!accepted.length) return;
+  S.tab = 'single';
+  runCase(accepted[0], S.model, { forceLive: true });
+}
+
+async function loadGallery() {
+  if (!thresholdsOk()) { render(); return; }
+  const model = S.model;
+  let seeded = false;
+  for (const tile of GALLERY_TILES) {
+    const key = caseKey(tile.id, model);
+    if (S.gallery[key]) continue;
+    S.gallery[key] = { thumb: tileUrl(tile.id) };
+    seeded = true;
+  }
+  if (seeded) render();
+
+  const pending = GALLERY_TILES.filter((tile) => {
+    const rec = S.gallery[caseKey(tile.id, model)];
+    return rec && rec.score == null && !rec.scorePending && !rec.error;
+  });
+  if (!pending.length) return;
+
+  await Promise.all(pending.map(async (tile) => {
+    const key = caseKey(tile.id, model);
+    S.gallery[key] = { ...S.gallery[key], scorePending: true };
+    try {
+      const res = await getScore(tile.id, model);
+      S.gallery[key] = {
+        ...S.gallery[key],
+        score: res.score,
+        scorePending: false,
+      };
+    } catch (error) {
+      S.gallery[key] = {
+        ...S.gallery[key],
+        scorePending: false,
+        error: errorText(error, 'Score failed'),
+      };
+    }
+    if (S.tab === 'examples' && S.model === model) render();
+  }));
+}
+
+// Render
+
+function render() {
+  renderApp(); renderAsk(); renderDialog();
+}
+
+function radioHTML(action, arg, on, label, disabled) {
+  const cls = 'radio-btn' + (on ? ' on' : '') + (disabled ? ' disabled' : '');
+  const attrs = disabled ? ' disabled aria-disabled="true"' : '';
+  return '<button class="' + cls + '" data-action="' + action + '" data-arg="' + arg + '"' + attrs + '>' +
+    '<span class="radio-ring"><span class="radio-dot"></span></span>' + label + '</button>';
+}
+
+function renderApp() {
+  const prevMain = document.querySelector('.main');
+  const mainScroll = prevMain ? prevMain.scrollTop : 0;
+  const root = document.getElementById('app');
+  root.innerHTML = (S.sbOpen ? sidebarHTML() : '') + mainHTML();
+  const nextMain = document.querySelector('.main');
+  if (nextMain) {
+    nextMain.scrollTop = S.scrollMainTo != null ? S.scrollMainTo : mainScroll;
+  }
+  const msgsEl = document.querySelector('.ask-msgs');
+  if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function sidebarHTML() {
+  return '<aside class="sidebar"><div class="sb-top">' +
+    '<div class="sb-title-row"><div class="sb-title">BCC Inference</div>' +
+    '<button class="icon-btn" data-action="toggleSb" title="Collapse sidebar">\u2039</button></div>' +
+    '<div class="hr"></div>' +
+    '<div class="eyebrow">Model</div>' +
+    '<div style="display:flex;flex-direction:column;gap:3px;margin-top:8px">' +
+    radioHTML('setModel', 'before', S.model === 'before', 'before (correction off)', S.tab === 'compare') +
+    radioHTML('setModel', 'after', S.model === 'after', 'after (correction on)', S.tab === 'compare') +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:16px"><span style="font-size:12.5px;color:var(--text2)">Device</span><span class="chip-cuda" id="deviceChip">' + esc(S.device || '\u2026') + '</span></div>' +
+    '<div class="hr"></div>' +
+    '<div class="eyebrow">Detection thresholds</div>' +
+    '<div class="sb-note">Drag the thresholds; tiles near a line flip live.</div>' +
+    '<div style="margin-top:16px"><div class="thresh-row"><span class="thresh-label">POSITIVE threshold</span><span class="thresh-val" id="posTv">' + S.posT.toFixed(2) + '</span></div>' +
+    '<input type="range" min="0.50" max="0.90" step="0.05" value="' + S.posT + '" data-slider="pos"></div>' +
+    '<div style="margin-top:14px"><div class="thresh-row"><span class="thresh-label">NEGATIVE threshold</span><span class="thresh-val" id="negTv">' + S.negT.toFixed(2) + '</span></div>' +
+    '<input type="range" min="0.10" max="0.50" step="0.05" value="' + S.negT + '" data-slider="neg"></div>' +
+    (thresholdsOk()
+      ? '<div class="sb-note" style="margin-top:14px">Between <span style="font-family:var(--mono);color:var(--text2)" id="negTv2">' + S.negT.toFixed(2) + '</span> and <span style="font-family:var(--mono);color:var(--text2)" id="posTv2">' + S.posT.toFixed(2) + '</span> \u2192 UNCERTAIN</div>'
+      : '<div class="sb-err" id="threshErr">' + esc(threshErrorText()) + '</div>') +
+    '<div class="hr"></div>' +
+    '<div class="fineprint">Research and educational use. Not for clinical use.</div>' +
+    '</div>' + queueHTML() + '</aside>';
+}
+
+function queueHTML() {
+  let items = '';
+  if (S.queueOpen) {
+    if (!S.queue.length) items = '<div style="font-size:12px;color:var(--text3)">No tiles queued.</div>';
+    else items = S.queue.map((key) => {
+      const e = S.cache[key];
+      const tone = toneVars(TONE[e.audit.status]);
+      return '<div class="queue-item' + (S.freshQueueKey === key ? ' fresh' : '') + '">' +
+        '<div style="display:flex;gap:10px">' +
+        '<div class="queue-thumb" style="background-image:url(\'' + e.analysis.original_png + '\')"></div>' +
+        '<div style="min-width:0;flex:1">' +
+        '<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;color:var(--text2)">' + e.model + ' model</span>' +
+        '<span style="margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--text)">' + e.analysis.score.toFixed(4) + '</span></div>' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.07em;margin-top:4px;color:' + tone.c + '">' + e.audit.status + '</div>' +
+        '<div style="font-size:11.5px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + reasonLineHTML(e.audit.reason_lines[0], e.analysis.metrics) + '</div>' +
+        '</div></div>' +
+        '<button class="queue-open-btn" data-action="openCase" data-arg="' + key + '">Open case</button></div>';
+    }).join('');
+    items = '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">' + items + '</div>';
+  }
+  return '<div class="queue-sec">' +
+    '<button class="queue-head" data-action="toggleQueue"><span>Review queue</span>' +
+    '<span class="queue-badge' + (S.queuePulse ? ' pulse' : '') + '">' + S.queue.length + '</span>' +
+    '<span class="chev' + (S.queueOpen ? ' open' : '') + '" style="margin-left:auto"></span></button>' +
+    (S.queueOpen ? items : '') + '</div>';
+}
+
+function tabHTML(key, label) {
+  return '<button class="tab' + (S.tab === key ? ' on' : '') + '" data-action="setTab" data-arg="' + key + '">' + label + '<span class="u"></span></button>';
+}
+
+function mainHTML() {
+  let body = '';
+  let result = '';
+  if (!thresholdsOk()) {
+    body = '<section style="margin-top:22px">' +
+      stripHTML('var(--pos)', 'Invalid thresholds', esc(threshErrorText())) + '</section>';
+  } else if (S.tab === 'single') {
+    body = '<div style="margin-top:24px"><div class="eyebrow" style="margin-bottom:8px">Tile</div>' +
+      '<div class="dropzone" data-action="simulateDrop" data-drop="single"><div style="flex:1;min-width:0">' +
+      '<div style="font-size:13px;font-weight:500">Drop a tile here to analyze</div>' +
+      '<div style="font-size:11.5px;color:var(--text3);margin-top:2px">PNG \u00b7 JPG \u00b7 TIFF \u00b7 up to 200 MB</div></div>' +
+      '<button class="btn">Browse files</button></div></div>';
+    result = resultHTML();
+  } else if (S.tab === 'examples') {
+    body = examplesHTML();
+    result = resultHTML();
+  } else if (S.tab === 'compare') {
+    body = compareHTML();
+    result = resultHTML();
+  }
+  const mainBody = S.tab === 'examples' ? result + body : body + result;
+  return '<main class="main">' +
+    (!S.sbOpen ? '<button class="sb-expand" data-action="toggleSb" title="Expand sidebar">\u203a</button>' : '') +
+    '<div class="content">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
+    '<h1 class="h1">SecondLook</h1>' +
+    '<div class="seg"><button class="' + (S.theme === 'dark' ? 'on' : '') + '" data-action="setTheme" data-arg="dark">Dark</button>' +
+    '<button class="' + (S.theme === 'light' ? 'on' : '') + '" data-action="setTheme" data-arg="light">Light</button></div></div>' +
+    '<div class="tabs">' + tabHTML('single', 'Single Image Analysis') + tabHTML('examples', 'Examples') + tabHTML('compare', 'Compare') + '</div>' +
+    mainBody +
+    '<div class="footer-note">Research and educational use. Not for clinical use.</div>' +
+    '</div></main>';
+}
+
+function scoreTrackHTML(score) {
+  const pctLeft = (v) => (Math.min(Math.max(v, 0), 1) * 100).toFixed(3) + '%';
+  const dot = score == null ? '' : '<span class="ex-score-dot" style="left:' + pctLeft(score) + '"></span>';
+  return '<div class="ex-score-track" aria-label="model score track">' +
+    '<span class="ex-score-threshold" data-thresh="neg" style="left:' + pctLeft(S.negT) + '"></span>' +
+    '<span class="ex-score-threshold" data-thresh="pos" style="left:' + pctLeft(S.posT) + '"></span>' +
+    dot + '</div>';
+}
+
+function examplesHTML() {
+  const tile = (item) => {
+    const model = S.model;
+    const record = S.gallery[caseKey(item.id, model)] || {};
+    const score = record.score;
+    const img = record.thumb || tileUrl(item.id);
+    let scoreRow = '<span style="font-family:var(--mono);font-size:11.5px;color:var(--text2)">score \u2026</span>';
+    if (record.error) {
+      const t = toneVars('warn');
+      scoreRow = '<span style="font-family:var(--mono);font-size:11.5px;color:var(--text2)">score error</span>' +
+        '<span class="ex-chip" style="color:' + t.c + ';background:' + t.bg + ';border:1px solid ' + t.ln + '">ERROR</span>';
+    } else if (score != null) {
+      const cls = tierForScore(score);
+      const t = toneVars(TONE[cls] || 'warn');
+      scoreRow = '<span style="font-family:var(--mono);font-size:11.5px;color:var(--text2)">score ' + Number(score).toFixed(4) + '</span>' +
+        '<span class="ex-chip" data-tier-chip style="color:' + t.c + ';background:' + t.bg + ';border:1px solid ' + t.ln + ';margin-left:auto">' + cls + '</span>';
+    }
+    const scoreAttr = score != null ? ' data-score="' + Number(score) + '"' : '';
+    return '<div class="ex-card"' + scoreAttr + '><div class="ex-img" style="background-image:url(\'' + img + '\')"></div>' +
+      scoreTrackHTML(score != null ? score : null) +
+      '<div style="display:flex;align-items:center;gap:8px">' + scoreRow + '</div>' +
+      '<button class="ex-analyze" data-action="analyzeExample" data-arg="' + item.id + '|' + model + '">Analyze</button></div>';
+  };
+  return '<div style="margin-top:26px"><div class="ex-grid">' +
+    GALLERY_TILES.map(tile).join('') + '</div></div>';
+}
+
+function compareHTML() {
+  const opts = GALLERY_TILES.map((tile) =>
+    '<option value="' + tile.id + '"' + (S.cmpTile === tile.id ? ' selected' : '') + '>' +
+    esc(FILE_LABELS[tile.id] || tile.id) + '</option>'
+  ).join('');
+  return '<div style="margin-top:24px"><div class="eyebrow">Tile</div>' +
+    '<select class="select" data-select="cmpTile">' + opts + '</select>' +
+    '<div style="display:flex;gap:24px;margin-top:14px">' +
+    radioHTML('setCmpModel', 'before', S.cmpModel === 'before', 'before (correction off)') +
+    radioHTML('setCmpModel', 'after', S.cmpModel === 'after', 'after (correction on)') +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text3);margin-top:10px">Weights: <span style="color:var(--text2)">' +
+    (S.cmpModel === 'before' ? 'before (correction off)' : 'after (correction on)') + '</span></div></div>';
+}
+
+function trustBelowKind(e) {
+  if (!e || !e.analysis) return 'loading';
+  if (e.phase === 'error') return 'error';
+  const tier = tierForScore(e.analysis.score);
+  if (tier === 'NEGATIVE') return 'negative';
+  if (tier === 'UNCERTAIN') return 'uncertain';
+  if (e.phase !== 'done' || S.auditPending) return 'loading';
+  if (!e.audit) return 'need-audit';
+  return 'audit';
+}
+
+function trustBelowHTML(e, opts) {
+  const enter = !opts || opts.enter !== false;
+  if (!e || !e.analysis) return loadingCardHTML();
+  if (e.phase === 'error') {
+    return stripHTML('var(--warn)', 'Analysis unavailable', esc(e.error || 'Analysis failed'));
+  }
+  const tier = tierForScore(e.analysis.score);
+  if (tier === 'NEGATIVE') {
+    return stripHTML('var(--text3)', 'No attention audit for negative calls',
+      'The detector found nothing to verify on this tile - audits run when a call is positive.');
+  }
+  if (tier === 'UNCERTAIN') {
+    return stripHTML('var(--warn)', 'Human review already required',
+      'Borderline scores between ' + S.negT.toFixed(2) + ' and ' + S.posT.toFixed(2) + ' always route to a reviewer, so no attention audit was run.');
+  }
+  if (e.phase !== 'done' || S.auditPending) return loadingCardHTML();
+  if (!e.audit) return loadingCardHTML();
+  return trustCardHTML(e, { enter: enter });
+}
+
+async function ensureLocalPositiveAudit() {
+  const e = S.current;
+  if (!e || !e.analysis || e.phase !== 'done' || e.audit || S.auditPending) return;
+  if (!thresholdsOk() || tierForScore(e.analysis.score) !== 'POSITIVE') return;
+  const runId = e.runId;
+  const key = e.key;
+  S.auditPending = true;
+  const slot = document.getElementById('trustSlot');
+  if (slot) {
+    slot.dataset.kind = 'loading';
+    slot.innerHTML = loadingCardHTML();
+  }
+  try {
+    const t0 = performance.now();
+    const audit = await getAudit(e.analysis, 'POSITIVE');
+    if (!S.current || S.current.runId !== runId) return;
+    const next = {
+      ...S.current,
+      audit,
+      completed: nowUTC(),
+      latency: ((performance.now() - t0) / 1000).toFixed(1) + ' s',
+    };
+    S.current = next;
+    if (key) S.cache[key] = { ...next };
+    if (audit.status === 'FLAGGED' || audit.status === 'DEFER') {
+      addToQueue(key, true);
+      const q = document.querySelector('.queue-sec');
+      if (q) q.outerHTML = queueHTML();
+    }
+    if (tierForScore(next.analysis.score) !== 'POSITIVE') return;
+    const slot2 = document.getElementById('trustSlot');
+    if (slot2) {
+      slot2.dataset.kind = 'audit';
+      slot2.innerHTML = trustCardHTML(next, { enter: takeCardEnter(next) });
+    } else {
+      render();
+    }
+    renderAsk();
+  } catch (error) {
+    if (S.current && S.current.runId === runId) {
+      const slot3 = document.getElementById('trustSlot');
+      if (slot3) {
+        slot3.dataset.kind = 'error';
+        slot3.innerHTML = stripHTML('var(--warn)', 'Attention audit unavailable',
+          esc(errorText(error, 'Could not finish the attention check.')));
+      }
+    }
+  } finally {
+    S.auditPending = false;
+  }
+}
+
+function resultHTML() {
+  const e = S.current;
+  if (!e) return '';
+  if (S.tab === 'examples' && !S.examplesPick) return '';
+  if (S.tab !== 'single' && S.tab !== 'compare' && S.tab !== 'examples') return '';
+  if (e.phase === 'error') {
+    return '<section style="margin-top:22px">' + stripHTML('var(--warn)', 'Analysis unavailable', esc(e.error || 'Analysis failed')) + '</section>';
+  }
+  if (!e.analysis) {
+    return '<section style="margin-top:22px">' + loadingCardHTML() + '</section>';
+  }
+  const a = e.analysis;
+  const tier = tierForScore(a.score);
+  const vt = toneVars(TONE[tier]);
+  const kind = trustBelowKind(e);
+  const enter = kind === 'audit' && takeCardEnter(e);
+  return '<section id="resultSection" style="margin-top:22px">' +
+    '<div class="banner" id="detectorBanner" data-tier="' + tier + '" style="border-color:' + vt.ln + ';background:' + vt.bg + '">' +
+    '<span class="dot" style="background:' + vt.c + '"></span>' +
+    '<span class="banner-tier" style="font-size:14px;font-weight:700;letter-spacing:.07em;color:' + vt.c + '">' + tier + '</span>' +
+    '<span style="font-size:12px;color:var(--text3)">Detector call</span>' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text3)">Model score</span>' +
+    '<span class="banner-score" style="font-family:var(--mono);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:' + vt.c + '">' + a.score.toFixed(4) + '</span></div>' +
+    '<div class="pair">' +
+    '<figure style="margin:0"><figcaption class="figcap">Original tile</figcaption><div class="tile-img" style="background-image:url(\'' + a.original_png + '\')"></div></figure>' +
+    '<figure style="margin:0"><figcaption class="figcap">Where the model looked</figcaption><div class="tile-img" style="background-image:url(\'' + a.overlay_png + '\')"></div></figure>' +
+    '</div><div id="trustSlot" data-kind="' + kind + '" style="margin-top:20px">' + trustBelowHTML(e, { enter: enter }) + '</div></section>';
+}
+
+function stripHTML(dotColor, title, body) {
+  return '<div class="strip"><span style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';flex:none;margin-top:5px"></span>' +
+    '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">' + title + '</div>' +
+    '<div style="font-size:12.5px;color:var(--text2);margin-top:3px;line-height:1.55">' + body + '</div></div>' +
+    '<span class="strip-pill">By design</span></div>';
+}
+
+function loadingCardHTML() {
+  return '<div class="card"><div class="card-body">' +
+    '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
+    '<span class="src-chip src-live"><span class="live-dot pulsing"></span>LIVE</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:16px"><span class="spinner"></span>' +
+    '<span style="font-size:13px;color:var(--text2)">Claude is checking model attention</span></div>' +
+    '<div class="sk" style="width:72%;margin-top:16px"></div>' +
+    '<div class="sk" style="width:54%;margin-top:9px;animation-delay:.2s"></div>' +
+    '<div class="sk" style="width:34%;margin-top:9px;animation-delay:.4s"></div>' +
+    '</div><div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span></div></div>';
+}
+
+function trustCardHTML(e, opts) {
+  const a = e.analysis, au = e.audit;
+  const st = toneVars(TONE[au.status]);
+  const live = e.source === 'LIVE';
+  const routed = (au.status === 'FLAGGED' || au.status === 'DEFER') && S.queue.includes(e.key);
+  const enter = !opts || opts.enter !== false;
+  const meta = e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + ' \u00b7 completed ' + (e.completed || nowUTC()) +
+    ' \u00b7 audit ' + (e.latency || '-') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
+  return '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
+    '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
+    (live
+      ? '<span class="src-chip src-live"><span class="live-dot"></span>LIVE</span>'
+      : '<span class="src-chip src-cached">Cached \u00b7 this session</span>') + '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:13px">' +
+    '<span class="status-pill" style="color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
+    '<span style="font-size:13px;color:var(--text2)">Attention check ' + statusOutcome(au.status) + '</span></div>' +
+    '<div style="margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--text)">' + reasonLineHTML(au.reason_lines[0], a.metrics) + '</div>' +
+    '<div style="margin-top:3px;font-size:13.5px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[1] || '', a.metrics) + '</div>' +
+    (routed
+      ? '<div class="routed"><span style="width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex:none"></span>' +
+        '<span style="font-size:12.5px;color:var(--text2)">Added to the review queue</span></div>'
+      : '') +
+    '<button class="ev-toggle" data-action="toggleEv"><span class="chev' + (S.evOpen ? ' open' : '') + '"></span>View evidence</button>' +
+    '<div class="ev-wrap' + (S.evOpen ? ' open' : '') + '"><div class="ev-inner"><div style="padding-top:13px">' +
+    '<div style="font-size:13px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[2] || (au.defer_reason || ''), a.metrics) + '</div>' +
+    metricsBlockHTML(a.metrics) +
+    '<div class="meta-line">' + meta + '</div></div></div></div>' +
+    '</div><div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span>' +
+    '<button class="ask-btn' + (S.askOpen ? ' open' : '') + '" data-action="toggleAsk">Ask Claude<span class="chev"></span></button></div></div>';
+}
+
+function metricHTML(k, v, d) {
+  return '<div class="metric"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="d">' + d + '</div></div>';
+}
+
+// Ask panel
+
+function renderAsk() {
+  const root = document.getElementById('askRoot');
+  const e = S.current;
+  const open = S.askOpen && e && e.audit && e.phase === 'done';
+  if (!open) { root.innerHTML = ''; return; }
+  const chips = QA_CHIPS[e.audit.status] || [];
+  const showChips = !S.msgs.length && !S.askPending;
+  let msgs = '';
+  if (!S.msgs.length && !S.askPending) {
+    msgs = '<div style="font-size:12px;color:var(--text3);line-height:1.55">Questions stay scoped to this case - the map, the metrics, and the routing decision.</div>';
+  }
+  const metrics = e.analysis.metrics;
+  msgs += S.msgs.map((m) => m.you
+    ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><div class="msg-who">You</div><div class="msg-you">' + esc(m.text) + '</div></div>'
+    : '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><div class="msg-who">Claude</div><div class="msg-claude">' + reasonLineHTML(m.text, metrics) + '</div></div>'
+  ).join('');
+  if (S.askPending) msgs += '<div class="pending">Claude is looking at the map\u2026</div>';
+
+  root.innerHTML = '<div class="ask-panel">' +
+    '<div class="ask-head"><div style="flex:1;min-width:0">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text)">Ask about this attention check</div>' +
+    '<div style="font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:3px">' + esc(caseTag(e)) + ' \u00b7 evidence ' + shortHash(e.analysis.evidence_hash) + '</div></div>' +
+    '<button class="icon-btn" style="border:0;width:24px;height:24px;font-size:15px" data-action="closeAsk">\u00d7</button></div>' +
+    '<div class="ask-msgs">' + msgs + '</div>' +
+    (showChips && chips.length
+      ? '<div class="chips">' + chips.map((c) => '<button class="chip-q" data-action="askChip" data-arg="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>'
+      : '') +
+    '<div class="ask-foot"><div style="display:flex;gap:8px">' +
+    '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026">' +
+    '<button class="btn-primary" data-action="askSend" style="flex:none">Send</button></div>' +
+    '<div style="display:flex;margin-top:7px"><span style="font-size:10.5px;color:var(--text3)">Describes model attention only - never a diagnosis.</span>' +
+    '<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)" id="askCount">0/300</span></div></div></div>';
+
+  const inp = document.getElementById('askInput');
+  inp.addEventListener('input', () => { document.getElementById('askCount').textContent = inp.value.length + '/300'; });
+  inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') sendAsk(inp.value); });
+  const msgsEl = root.querySelector('.ask-msgs');
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+async function sendAsk(text) {
+  const q = (text || '').trim();
+  const e = S.current;
+  if (!q || S.askPending || !e || !e.audit) return;
+  S.msgs.push({ you: true, text: q });
+  S.askPending = true;
+  renderAsk();
+  const context = {
+    file: e.file, model: e.model, status: e.audit.status,
+    evidence_hash: e.analysis.evidence_hash, metrics: e.analysis.metrics,
+  };
+  try {
+    const res = await getAskClaude(q, context);
+    S.msgs.push({ you: false, text: res.error || !res.answer ? 'Something went wrong. Try again.' : res.answer });
+  } catch {
+    S.msgs.push({ you: false, text: 'Something went wrong. Try again.' });
+  } finally {
+    S.askPending = false;
+    renderAsk();
+  }
+}
+
+// Case dialog
+
+function renderDialog() {
+  const root = document.getElementById('dialogRoot');
+  const e = S.dialogKey ? S.cache[S.dialogKey] : null;
+  if (!e) { root.innerHTML = ''; return; }
+  const a = e.analysis, au = e.audit;
+  const st = toneVars(TONE[au.status]);
+  const tier = tierForScore(a.score);
+  const vt = toneVars(TONE[tier]);
+  const reasons = au.reason_lines.map((line, index) =>
+    '<div style="margin-top:' + (index ? '3px' : '10px') + ';font-size:13px;line-height:1.6;color:' +
+    (index ? 'var(--text2)' : 'var(--text)') + '">' + reasonLineHTML(line, a.metrics) + '</div>'
+  ).join('');
+  root.innerHTML = '<div class="overlay" data-action="closeDlg"><div class="dialog" data-stop="1">' +
+    '<div class="dlg-head"><div><div style="font-size:14.5px;font-weight:600;color:var(--text)">Queued case</div>' +
+    '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:3px">' + e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + '</div></div>' +
+    '<button class="icon-btn" style="margin-left:auto;border:0;font-size:16px" data-action="closeDlg">\u00d7</button></div>' +
+    '<div style="padding:18px 20px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+    '<figure style="margin:0"><figcaption class="figcap" style="font-size:10px">Original tile</figcaption><div class="tile-img" style="border-radius:10px;background-image:url(\'' + a.original_png + '\')"></div></figure>' +
+    '<figure style="margin:0"><figcaption class="figcap" style="font-size:10px">Where the model looked</figcaption><div class="tile-img" style="border-radius:10px;background-image:url(\'' + a.overlay_png + '\')"></div></figure></div>' +
+    '<div class="dlg-banner" style="border-color:' + vt.ln + ';background:' + vt.bg + '">' +
+    '<span style="width:7px;height:7px;border-radius:50%;background:' + vt.c + ';flex:none"></span>' +
+    '<span style="font-size:12.5px;font-weight:700;letter-spacing:.07em;color:' + vt.c + '">' + tier + '</span>' +
+    '<span style="font-size:11.5px;color:var(--text3)">Detector call</span>' +
+    '<span style="margin-left:auto;font-family:var(--mono);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:' + vt.c + '">' + a.score.toFixed(4) + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:14px">' +
+    '<span class="status-pill" style="font-size:10.5px;padding:3px 10px;color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
+    '<span style="font-size:12.5px;color:var(--text2)">Attention check ' + statusOutcome(au.status) + '</span></div>' +
+    reasons +
+    metricsBlockHTML(a.metrics, 'dlg-metrics') +
+    '</div>' +
+    '<div class="dlg-foot"><span style="font-size:11px;color:var(--text3)">Actions stay in this session.</span>' +
+    '<button class="btn-ghost" style="margin-left:auto" data-action="closeDlg">Keep in queue</button>' +
+    '<button class="btn-primary" data-action="markReviewed">Mark reviewed</button></div></div></div>';
+}
+
+function setTheme(t) {
+  S.theme = t;
+  document.body.dataset.theme = t;
+  render();
+}
+
+// Events
+
+function uploadInput(multiple) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.png,.jpg,.jpeg,.tif,.tiff';
+  input.multiple = multiple;
+  input.hidden = true;
+  document.body.appendChild(input);
+  return input;
+}
+
+const singleUploadInput = uploadInput(false);
+
+singleUploadInput.addEventListener('change', () => {
+  const files = Array.from(singleUploadInput.files || []);
+  singleUploadInput.value = '';
+  runSingleUpload(files);
+});
+
+document.addEventListener('click', (ev) => {
+  const stop = ev.target.closest('[data-stop]');
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  if (stop && el.dataset.action === 'closeDlg' && !el.classList.contains('icon-btn') && !el.classList.contains('btn-ghost')) return;
+  const arg = el.dataset.arg;
+  switch (el.dataset.action) {
+    case 'toggleSb': S.sbOpen = !S.sbOpen; render(); break;
+    case 'toggleQueue': S.queueOpen = !S.queueOpen; render(); break;
+    case 'setTheme': setTheme(arg); break;
+    case 'setTab':
+      S.tab = arg; closeTransient();
+      if (arg === 'compare') {
+        S.evOpen = false;
+        runCase(S.cmpTile, S.cmpModel);
+      } else if (arg === 'single' && S.current && S.current.model !== S.model) {
+        runCase(S.current.file, S.model);
+      } else {
+        render();
+        if (arg === 'examples') loadGallery();
+      }
+      break;
+    case 'setModel':
+      if (S.tab === 'compare') break;
+      S.model = arg;
+      if (S.tab === 'single' && S.current) {
+        runCase(S.current.file, arg);
+      } else if (S.tab === 'examples') {
+        loadGallery();
+        if (S.examplesPick && S.current) runCase(S.current.file, arg);
+        else render();
+      } else {
+        render();
+      }
+      break;
+    case 'setCmpModel':
+      S.cmpModel = arg;
+      runCase(S.cmpTile, arg);
+      break;
+    case 'simulateDrop': singleUploadInput.click(); break;
+    case 'analyzeExample': {
+      const [f, m] = arg.split('|');
+      S.tab = 'examples';
+      S.examplesPick = true;
+      S.scrollMainTo = 0;
+      runCase(f, m, { forceLive: true }).finally(() => { S.scrollMainTo = null; });
+      break;
+    }
+    case 'toggleEv': {
+      S.evOpen = !S.evOpen;
+      const wrap = document.querySelector('.ev-wrap');
+      const chev = document.querySelector('.ev-toggle .chev');
+      if (wrap) wrap.classList.toggle('open', S.evOpen);
+      if (chev) chev.classList.toggle('open', S.evOpen);
+      break;
+    }
+    case 'toggleAsk':
+      S.askOpen = !S.askOpen;
+      {
+        const askBtn = document.querySelector('.ask-btn');
+        if (askBtn) askBtn.classList.toggle('open', S.askOpen);
+      }
+      renderAsk();
+      break;
+    case 'closeAsk':
+      S.askOpen = false;
+      {
+        const askBtn = document.querySelector('.ask-btn');
+        if (askBtn) askBtn.classList.remove('open');
+      }
+      renderAsk();
+      break;
+    case 'askChip': sendAsk(arg); break;
+    case 'askSend': { const inp = document.getElementById('askInput'); if (inp) { sendAsk(inp.value); } break; }
+    case 'openCase': S.dialogKey = arg; render(); break;
+    case 'closeDlg': S.dialogKey = null; render(); break;
+    case 'markReviewed': S.queue = S.queue.filter((k) => k !== S.dialogKey); S.dialogKey = null; render(); break;
+  }
+});
+
+document.addEventListener('dragover', (ev) => {
+  if (ev.target.closest('[data-drop]')) ev.preventDefault();
+});
+
+document.addEventListener('drop', (ev) => {
+  const zone = ev.target.closest('[data-drop]');
+  if (!zone) return;
+  ev.preventDefault();
+  const files = Array.from(ev.dataTransfer.files || []);
+  runSingleUpload(files);
+});
+
+function applyThresholdsLive() {
+  if (!thresholdsOk()) {
+    S.dialogKey = null;
+    S.askOpen = false;
+    S.msgs = [];
+    S.threshInvalidView = true;
+    render();
+    return;
+  }
+  if (S.threshInvalidView) {
+    S.threshInvalidView = false;
+    render();
+    if (S.tab === 'examples') loadGallery();
+    return;
+  }
+  const pctLeft = (v) => (Math.min(Math.max(v, 0), 1) * 100).toFixed(3) + '%';
+  document.querySelectorAll('.ex-score-threshold[data-thresh="neg"]').forEach((el) => {
+    el.style.left = pctLeft(S.negT);
+  });
+  document.querySelectorAll('.ex-score-threshold[data-thresh="pos"]').forEach((el) => {
+    el.style.left = pctLeft(S.posT);
+  });
+  document.querySelectorAll('.ex-card[data-score]').forEach((card) => {
+    const score = parseFloat(card.dataset.score);
+    if (Number.isNaN(score)) return;
+    const tier = tierForScore(score);
+    const t = toneVars(TONE[tier] || 'warn');
+    const chip = card.querySelector('[data-tier-chip]');
+    if (!chip) return;
+    chip.textContent = tier;
+    chip.style.color = t.c;
+    chip.style.background = t.bg;
+    chip.style.borderColor = t.ln;
+  });
+  const e = S.current;
+  if (!e || !e.analysis) return;
+  const tier = tierForScore(e.analysis.score);
+  const vt = toneVars(TONE[tier]);
+  const banner = document.getElementById('detectorBanner');
+  if (banner) {
+    banner.dataset.tier = tier;
+    banner.style.borderColor = vt.ln;
+    banner.style.background = vt.bg;
+    const dot = banner.querySelector('.dot');
+    const tierEl = banner.querySelector('.banner-tier');
+    const scoreEl = banner.querySelector('.banner-score');
+    if (dot) dot.style.background = vt.c;
+    if (tierEl) {
+      tierEl.textContent = tier;
+      tierEl.style.color = vt.c;
+    }
+    if (scoreEl) scoreEl.style.color = vt.c;
+  }
+  const slot = document.getElementById('trustSlot');
+  if (!slot) return;
+  const kind = trustBelowKind(e);
+  if (kind === 'audit' && slot.dataset.kind === 'audit') return;
+  if (kind === 'need-audit') {
+    ensureLocalPositiveAudit();
+    return;
+  }
+  slot.dataset.kind = kind;
+  slot.innerHTML = trustBelowHTML(e, { enter: false });
+}
+
+document.addEventListener('input', (ev) => {
+  const sl = ev.target.closest('[data-slider]');
+  if (!sl) return;
+  const v = parseFloat(sl.value);
+  if (sl.dataset.slider === 'pos') S.posT = v;
+  else S.negT = v;
+  const a = document.getElementById(sl.dataset.slider === 'pos' ? 'posTv' : 'negTv');
+  const b = document.getElementById(sl.dataset.slider === 'pos' ? 'posTv2' : 'negTv2');
+  if (a) a.textContent = v.toFixed(2);
+  if (b) b.textContent = v.toFixed(2);
+  const err = document.getElementById('threshErr');
+  if (err) err.textContent = threshErrorText();
+  applyThresholdsLive();
+});
+
+document.addEventListener('change', (ev) => {
+  const select = ev.target.closest('[data-select]');
+  if (select && select.dataset.select === 'cmpTile') {
+    S.cmpTile = select.value;
+    runCase(S.cmpTile, S.cmpModel);
+    return;
+  }
+  if (ev.target.closest('[data-slider]')) {
+    applyThresholdsLive();
+  }
+});
+
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  if (S.dialogKey) { S.dialogKey = null; render(); }
+  else if (S.askOpen) {
+    S.askOpen = false;
+    const askBtn = document.querySelector('.ask-btn');
+    if (askBtn) askBtn.classList.remove('open');
+    renderAsk();
+  }
+});
+
+// Boot
+
+function deviceLabel(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.startsWith('cuda')) return 'CUDA';
+  if (s.startsWith('mps')) return 'MPS';
+  if (s.startsWith('cpu')) return 'CPU';
+  return String(raw || 'CPU').toUpperCase();
+}
+
+async function loadHealth() {
+  try {
+    const res = await fetch('/health');
+    if (!res.ok) return;
+    const data = await res.json();
+    S.device = deviceLabel(data.device);
+    const chip = document.getElementById('deviceChip');
+    if (chip) chip.textContent = S.device;
+    else if (S.sbOpen) render();
+  } catch {
+    /* leave placeholder */
+  }
+}
+
+render();
+loadHealth();
+setTimeout(() => runCase('positive-1', 'after', { forceLive: true }), 350);
+</script>
+</body>
+</html>

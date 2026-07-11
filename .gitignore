@@ -8,6 +8,7 @@ dist/
 # Virtual environments
 .venv/
 venv/
+.env
 
 # Tooling caches
 .pytest_cache/
@@ -28,3 +29,6 @@ venv/
 # Data: keep tracked structure, never commit tiles/images
 data/*
 !data/.gitkeep
+
+# Server-side audit logs
+logs/

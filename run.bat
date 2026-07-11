@@ -1,5 +1,5 @@
 @echo off
-REM Launch the BCC Streamlit demo via the repo venv so torch and src are importable.
+REM Launch the FastAPI server via the repo venv.
 setlocal
 pushd "%~dp0"
 if defined PYTHONPATH (
@@ -12,8 +12,13 @@ if exist .\.venv\Scripts\Activate.bat (
 ) else (
     echo INFO: .venv not found at .\.venv; using current python on PATH.
 )
+if exist .env (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env") do (
+        if not "%%A"=="" set "%%A=%%B"
+    )
+)
 if not defined NO_ALBUMENTATIONS_UPDATE set "NO_ALBUMENTATIONS_UPDATE=1"
-streamlit run app\streamlit_app_bcc.py --server.address 127.0.0.1
+python -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 set "EXIT_CODE=%ERRORLEVEL%"
 popd
 endlocal & exit /b %EXIT_CODE%
