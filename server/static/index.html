@@ -726,7 +726,7 @@ function trustBelowHTML(e, opts) {
   const tier = tierForScore(e.analysis.score);
   if (tier === 'NEGATIVE') {
     return stripHTML('var(--text3)', 'No attention audit for negative calls',
-      'The detector found nothing to verify on this tile \u2014 audits run when a call is positive.');
+      'The detector found nothing to verify on this tile - audits run when a call is positive.');
   }
   if (tier === 'UNCERTAIN') {
     return stripHTML('var(--warn)', 'Human review already required',
@@ -844,7 +844,7 @@ function trustCardHTML(e, opts) {
   const routed = (au.status === 'FLAGGED' || au.status === 'DEFER') && S.queue.includes(e.key);
   const enter = !opts || opts.enter !== false;
   const meta = e.model + ' model \u00b7 evidence ' + a.evidence_hash + ' \u00b7 completed ' + (e.completed || nowUTC()) +
-    ' \u00b7 audit ' + (e.latency || '\u2014') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
+    ' \u00b7 audit ' + (e.latency || '-') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
   return '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
     '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
     (live
@@ -883,7 +883,7 @@ function renderAsk() {
   const showChips = !S.msgs.length && !S.askPending;
   let msgs = '';
   if (!S.msgs.length && !S.askPending) {
-    msgs = '<div style="font-size:12px;color:var(--text3);line-height:1.55">Questions stay scoped to this case \u2014 the map, the metrics, and the routing decision.</div>';
+    msgs = '<div style="font-size:12px;color:var(--text3);line-height:1.55">Questions stay scoped to this case - the map, the metrics, and the routing decision.</div>';
   }
   msgs += S.msgs.map((m) => m.you
     ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><div class="msg-who">You</div><div class="msg-you">' + esc(m.text) + '</div></div>'
@@ -903,7 +903,7 @@ function renderAsk() {
     '<div class="ask-foot"><div style="display:flex;gap:8px">' +
     '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026">' +
     '<button class="btn-primary" data-action="askSend" style="flex:none">Send</button></div>' +
-    '<div style="display:flex;margin-top:7px"><span style="font-size:10.5px;color:var(--text3)">Describes model attention only \u2014 never a diagnosis.</span>' +
+    '<div style="display:flex;margin-top:7px"><span style="font-size:10.5px;color:var(--text3)">Describes model attention only - never a diagnosis.</span>' +
     '<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)" id="askCount">0/300</span></div></div></div>';
 
   const inp = document.getElementById('askInput');
