@@ -494,3 +494,41 @@ def test_ask_accepts_300_chars_and_rejects_more(client, monkeypatch):
         image_png=b"overlay",
         question="x" * 300,
     )
+
+
+def test_ask_uses_audit_call_tier_when_stored_tier_is_uncertain(client, monkeypatch):
+    _put_record(tier="UNCERTAIN", score=0.65)
+    monkeypatch.setattr(
+        server_main,
+        "audit_tile",
+        Mock(
+            return_value=AuditResult(
+                status="VERIFIED",
+                reason_lines=["Attention stays on tissue.", "Map agrees enough."],
+                numbers_cited=["corner_ratio=0.08"],
+            )
+        ),
+    )
+    follow_up = Mock(return_value=("Lifted band is positive for this check.", None))
+    monkeypatch.setattr(server_main, "follow_up_attention", follow_up)
+
+    audit = client.post(
+        "/api/audit",
+        json={"evidence_hash": "evidence", "call_tier": "POSITIVE"},
+    )
+    ask = client.post(
+        "/api/ask",
+        json={"evidence_hash": "evidence", "question": "Why verified?"},
+    )
+
+    assert audit.status_code == 200
+    assert ask.status_code == 200
+    follow_up.assert_called_once_with(
+        score=0.65,
+        tier="POSITIVE",
+        metrics={"topk_mass": 0.12, "corner_ratio": 0.08, "edge_ratio": 0.21},
+        audit_status="VERIFIED",
+        reason_lines=["Attention stays on tissue.", "Map agrees enough."],
+        image_png=b"overlay",
+        question="Why verified?",
+    )

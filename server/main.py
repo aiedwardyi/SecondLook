@@ -240,7 +240,7 @@ def audit(body: AuditRequest) -> AuditResponse:
         defer_reason=result.defer_reason,
     )
     # Store all statuses (incl. DEFER) so /api/ask works; DEFER still re-runs above.
-    cache.set_audit(body.evidence_hash, response)
+    cache.set_audit(body.evidence_hash, response, call_tier=call_tier)
     return response
 
 
@@ -252,9 +252,11 @@ def ask(body: AskRequest) -> AskResponse:
     if record.audit is None:
         raise HTTPException(status_code=409, detail="attention audit not found")
 
+    # Prefer the tier used when the audit ran (e.g. slider-lifted POSITIVE).
+    ask_tier = record.audit_call_tier or record.tier
     answer, error = follow_up_attention(
         score=record.score,
-        tier=record.tier,
+        tier=ask_tier,
         metrics=record.metrics,
         audit_status=record.audit.status,
         reason_lines=record.audit.reason_lines,

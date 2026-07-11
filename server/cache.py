@@ -18,6 +18,8 @@ class AnalysisRecord:
     metrics: dict[str, float]
     model: ModelId
     audit: AuditResponse | None = None
+    # Tier used when the audit was run (may differ from analyze tier via call_tier).
+    audit_call_tier: Tier | None = None
 
 
 _LOCK = RLock()
@@ -36,6 +38,7 @@ def _copy_record(record: AnalysisRecord) -> AnalysisRecord:
         metrics=dict(record.metrics),
         model=record.model,
         audit=_copy_audit(record.audit),
+        audit_call_tier=record.audit_call_tier,
     )
 
 
@@ -61,7 +64,11 @@ def put(evidence_hash: str, record: AnalysisRecord) -> None:
             and _is_final_audit(existing.audit)
             and record.audit is None
         ):
-            record = replace(record, audit=_copy_audit(existing.audit))
+            record = replace(
+                record,
+                audit=_copy_audit(existing.audit),
+                audit_call_tier=existing.audit_call_tier,
+            )
         if evidence_hash in _RECORDS:
             del _RECORDS[evidence_hash]
         _RECORDS[evidence_hash] = _copy_record(record)
@@ -69,12 +76,21 @@ def put(evidence_hash: str, record: AnalysisRecord) -> None:
             _RECORDS.popitem(last=False)
 
 
-def set_audit(evidence_hash: str, audit: AuditResponse) -> bool:
-    """Store audit for ask lookup. DEFER is stored but not reused by /api/audit."""
+def set_audit(
+    evidence_hash: str,
+    audit: AuditResponse,
+    *,
+    call_tier: Tier | None = None,
+) -> bool:
+    """Store audit for ask lookup. call_tier is the band used when auditing."""
     with _LOCK:
         record = _RECORDS.get(evidence_hash)
         if record is None:
             return False
-        _RECORDS[evidence_hash] = replace(record, audit=_copy_audit(audit))
+        _RECORDS[evidence_hash] = replace(
+            record,
+            audit=_copy_audit(audit),
+            audit_call_tier=call_tier if call_tier is not None else record.audit_call_tier,
+        )
         _RECORDS.move_to_end(evidence_hash)
         return True

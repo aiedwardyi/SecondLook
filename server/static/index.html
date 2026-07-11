@@ -303,6 +303,7 @@ const S = {
   examplesPick: false,
   scrollMainTo: null,
   auditPending: false,
+  device: null,
 };
 
 function tileUrl(tileId) {
@@ -605,7 +606,7 @@ function sidebarHTML() {
     radioHTML('setModel', 'before', S.model === 'before', 'before (correction off)', S.tab === 'compare') +
     radioHTML('setModel', 'after', S.model === 'after', 'after (correction on)', S.tab === 'compare') +
     '</div>' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:16px"><span style="font-size:12.5px;color:var(--text2)">Device</span><span class="chip-cuda">CUDA</span></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:16px"><span style="font-size:12.5px;color:var(--text2)">Device</span><span class="chip-cuda" id="deviceChip">' + esc(S.device || '\u2026') + '</span></div>' +
     '<div class="hr"></div>' +
     '<div class="eyebrow">Detection thresholds</div>' +
     '<div class="sb-note">Drag the thresholds; tiles near a line flip live.</div>' +
@@ -1228,7 +1229,30 @@ document.addEventListener('keydown', (ev) => {
 
 // Boot
 
+function deviceLabel(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.startsWith('cuda')) return 'CUDA';
+  if (s.startsWith('mps')) return 'MPS';
+  if (s.startsWith('cpu')) return 'CPU';
+  return String(raw || 'CPU').toUpperCase();
+}
+
+async function loadHealth() {
+  try {
+    const res = await fetch('/health');
+    if (!res.ok) return;
+    const data = await res.json();
+    S.device = deviceLabel(data.device);
+    const chip = document.getElementById('deviceChip');
+    if (chip) chip.textContent = S.device;
+    else if (S.sbOpen) render();
+  } catch {
+    /* leave placeholder */
+  }
+}
+
 render();
+loadHealth();
 setTimeout(() => runCase('positive-1', 'after', { forceLive: true }), 350);
 </script>
 </body>
