@@ -294,8 +294,13 @@ const GALLERY_TILES = [
 
 const GALLERY_ASSET_V = '3'; // bump to bust /api/tile cache
 
+function readStoredTheme() {
+  try { return localStorage.getItem('sl-theme') === 'light' ? 'light' : 'dark'; }
+  catch { return 'dark'; }
+}
+
 const S = {
-  theme: localStorage.getItem('sl-theme') === 'light' ? 'light' : 'dark', sbOpen: true, tab: 'single',
+  theme: readStoredTheme(), sbOpen: true, tab: 'single',
   model: 'after', posT: 0.70, negT: 0.30,
   cmpTile: 'positive-1', cmpModel: 'before',
   current: null,
@@ -1017,7 +1022,7 @@ function renderDialog() {
 function setTheme(t) {
   S.theme = t;
   document.body.dataset.theme = t;
-  localStorage.setItem('sl-theme', t);
+  try { localStorage.setItem('sl-theme', t); } catch { /* storage unavailable */ }
   render();
 }
 
