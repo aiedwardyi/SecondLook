@@ -205,7 +205,7 @@
   .pending{font-size:12px;color:var(--text3);animation:skPulse 1.4s ease-in-out infinite;grid-column:1 / -1}
 </style>
 </head>
-<body data-theme="dark">
+<body>
 
 <div class="app" id="app"></div>
 <div id="dialogRoot"></div>
@@ -295,7 +295,7 @@ const GALLERY_TILES = [
 const GALLERY_ASSET_V = '3'; // bump to bust /api/tile cache
 
 const S = {
-  theme: 'dark', sbOpen: true, tab: 'single',
+  theme: localStorage.getItem('sl-theme') === 'light' ? 'light' : 'dark', sbOpen: true, tab: 'single',
   model: 'after', posT: 0.70, negT: 0.30,
   cmpTile: 'positive-1', cmpModel: 'before',
   current: null,
@@ -1017,6 +1017,7 @@ function renderDialog() {
 function setTheme(t) {
   S.theme = t;
   document.body.dataset.theme = t;
+  localStorage.setItem('sl-theme', t);
   render();
 }
 
@@ -1241,6 +1242,7 @@ async function loadHealth() {
   }
 }
 
+document.body.dataset.theme = S.theme;
 render();
 loadHealth();
 setTimeout(() => runCase('positive-1', 'after', { forceLive: true }), 350);
