@@ -95,7 +95,7 @@
   .queue-open-btn:hover{background:var(--hov);color:var(--text)}
 
   .main{flex:1;min-width:0;height:100%;overflow-y:auto;position:relative}
-  .content{max-width:960px;margin:0 auto;padding:34px 56px 150px}
+  .content{max-width:960px;margin:0 auto;padding:34px 56px 80px}
   .h1{margin:0;font-size:28px;font-weight:600;letter-spacing:-.02em}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--chipbg)}
   .seg button{padding:4px 12px;font-size:11.5px;font-weight:600;border:0;border-radius:7px;background:transparent;color:var(--text3)}
@@ -132,77 +132,82 @@
 
   .select{width:100%;margin-top:8px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line2);border-radius:10px;outline:none;cursor:pointer}
 
-  .banner{display:flex;align-items:center;gap:11px;padding:12px 18px;border-radius:12px;border:1px solid}
+  .banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:10px;border:1px solid}
+  .banner-tier{font-size:26px;font-weight:700;letter-spacing:.03em;line-height:1}
+  .banner-label{font-size:12px;color:var(--text2)}
+  .banner-div{width:1px;height:18px;background:currentColor;opacity:.35;flex:none}
+  .banner-score-label{font-size:11px;color:var(--text2)}
+  .banner-score{font-family:var(--mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
   .dot{width:8px;height:8px;border-radius:50%;flex:none}
-  .pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
-  .figcap{font-size:10.5px;font-weight:600;letter-spacing:.09em;color:var(--text3);text-transform:uppercase;margin-bottom:7px}
-  .tile-img{width:100%;aspect-ratio:1;border-radius:12px;border:1px solid var(--line);background-color:#000;background-size:cover;background-position:center}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .figcap{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+  .tile-img{width:100%;aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background-color:#000;background-size:cover;background-position:center}
 
-  .strip{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+  .strip{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
   .strip-pill{flex:none;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text3);border:1px solid var(--line2);border-radius:999px;padding:3px 9px;text-transform:uppercase}
 
-  .card{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+  .card{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
   .card.enter{animation:fadeUp .26s ease}
-  .card-body{padding:16px 20px 15px;min-height:150px}
-  .card-foot{display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--line);background:var(--surface2)}
-  .card-foot-note{font-size:11.5px;color:var(--text3)}
-  .src-chip{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:999px}
-  .src-live{color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-line)}
-  .src-cached{color:var(--text3);background:var(--chipbg);border:1px solid var(--line2)}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+  .card-body{padding:20px 22px}
+  .card-foot{display:flex;align-items:center;gap:12px;padding:12px 22px;border-top:1px solid var(--line)}
+  .card-foot-note{font-size:11px;color:var(--text3)}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
   .live-dot.pulsing{animation:livePulse 1.4s ease-in-out infinite}
-  .status-pill{font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 11px;border-radius:999px;border:1px solid}
+  .status-pill{display:inline-flex;font-size:12px;font-weight:800;letter-spacing:.12em;padding:5px 14px;border-radius:999px;border:1px solid}
+  .ac-title{margin-top:12px;font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text)}
+  .ac-status{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--text3)}
+  .ac-status .sep{color:var(--text3);opacity:.7}
+  .ac-reason{margin-top:14px;font-size:15px;font-weight:500;line-height:1.55;color:var(--text)}
+  .ac-reason-2{margin-top:4px;font-size:15px;font-weight:400;line-height:1.55;color:var(--text2)}
+  .ac-reason-3{margin-top:10px;font-size:15px;font-weight:400;line-height:1.55;color:var(--text2)}
   .spinner{width:13px;height:13px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin 1s linear infinite;flex:none}
   .sk{height:11px;border-radius:6px;background:var(--chipbg);animation:skPulse 1.6s ease-in-out infinite}
-  .routed{display:flex;align-items:center;gap:9px;margin-top:13px;padding:9px 13px;border-radius:10px;background:var(--chipbg);border:1px solid var(--line);animation:rowIn .3s ease}
-  .ev-toggle{display:flex;align-items:center;gap:9px;margin-top:14px;background:none;border:0;padding:2px 0;color:var(--text2);font-size:12.5px;font-weight:600}
+  .routed{display:flex;align-items:center;gap:9px;margin-top:14px;padding:10px 14px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);animation:rowIn .3s ease;font-size:13px;color:var(--text2)}
+  .ev-toggle{display:flex;align-items:center;gap:8px;margin-top:14px;background:none;border:0;padding:2px 0;color:var(--text2);font-size:13px;font-weight:600}
   .ev-toggle:hover{color:var(--text)}
   .ev-toggle .chev{border-color:currentColor;margin-top:-1px}
   .ev-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.25,.7,.3,1)}
   .ev-wrap.open{grid-template-rows:1fr}
   .ev-inner{overflow:hidden;min-height:0}
-  .metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:13px}
-  .metric{background:var(--surface2);padding:11px 14px}
-  .metric .k{font-size:10px;font-weight:600;letter-spacing:.07em;color:var(--text3);text-transform:uppercase}
-  .metric .v{font-size:19px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text)}
-  .metric .d{font-size:11px;color:var(--text3);margin-top:2px}
-  .meta-line{margin-top:13px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--text3)}
-  .ask-btn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface);border:1px solid var(--line2);border-radius:999px;flex:none}
-  .ask-btn:hover{color:var(--text);border-color:var(--accent)}
-  .ask-btn .chev{border-color:currentColor;transform:rotate(-135deg);margin-top:3px}
-  .ask-btn.open .chev{transform:rotate(45deg);margin-top:-3px}
+  .metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:14px}
+  .metric{background:var(--surface2);padding:12px 14px}
+  .metric .k{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text3);text-transform:uppercase}
+  .metric .v{font-size:14px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;color:var(--text);display:flex;align-items:baseline;gap:6px}
+  .metric .v .qual{font-size:12px;font-weight:400;color:var(--text2)}
+  .metric .v.hot{color:var(--warn)}
+  .metric .d{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.45}
+  .meta-line{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--text3)}
 
-  .ask-panel{position:fixed;right:26px;bottom:26px;width:396px;max-height:72vh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow);z-index:70;animation:fadeUp .24s cubic-bezier(.2,.8,.3,1);overflow:hidden}
-  .ask-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--line)}
-  .ask-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
-  .msg-who{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--text3);text-transform:uppercase}
-  .msg-you{font-size:12.5px;line-height:1.55;color:var(--text);background:var(--chipbg);border:1px solid var(--line);border-radius:11px;padding:8px 11px;max-width:92%}
-  .msg-claude{font-size:12.5px;line-height:1.55;color:var(--text2);max-width:92%}
-  .chips{display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap}
+  .ask-inline{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:16px}
+  .ask-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+  .ask-inline-row{display:flex;gap:8px;margin-top:10px;align-items:center}
+  .ask-input{flex:1;min-width:0;height:36px;padding:0 12px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:9px;outline:none}
+  .ask-send{flex:none;height:36px;padding:0 18px;font-size:14px;border-radius:9px}
+  .ask-inline-log{margin-top:14px}
+  .ask-inline-log:empty{display:none}
+  .ask-msgs{display:grid;grid-template-columns:60px 1fr;column-gap:10px;row-gap:12px;align-items:start}
+  .msg-who{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;padding-top:6px}
+  .msg-who.plain{padding-top:3px}
+  .msg-you{display:inline-block;font-size:14px;line-height:1.55;color:var(--text);background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+  .msg-claude{font-size:14px;line-height:1.55;color:var(--text2)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
   .chip-q{padding:6px 11px;font-size:11.5px;font-weight:500;color:var(--text2);background:var(--chipbg);border:1px solid var(--line);border-radius:999px}
   .chip-q:hover{color:var(--text);border-color:var(--line2)}
-  .ask-foot{padding:10px 12px;border-top:1px solid var(--line)}
-  .ask-input{flex:1;min-width:0;padding:8px 11px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:9px;outline:none}
 
   .overlay{position:fixed;inset:0;background:var(--dim);z-index:90;animation:fadeIn .2s ease;overflow-y:auto;padding:6vh 20px 40px}
-  .dialog{max-width:680px;margin:0 auto;background:var(--surface);border:1px solid var(--line2);border-radius:18px;box-shadow:var(--shadow);animation:dialogIn .26s cubic-bezier(.2,.8,.25,1);overflow:hidden}
-  .dlg-head{display:flex;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--line)}
-  .dlg-banner{display:flex;align-items:center;gap:10px;margin-top:16px;padding:10px 14px;border:1px solid;border-radius:10px}
-  .dlg-metrics .metric{padding:9px 13px}
-  .dlg-metrics .metric .k{font-size:9.5px}
-  .dlg-metrics .metric .v{font-size:16px;margin-top:3px}
+  .dialog{max-width:680px;margin:0 auto;background:var(--surface);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow);animation:dialogIn .26s cubic-bezier(.2,.8,.25,1);overflow:hidden}
+  .dlg-head{display:flex;align-items:flex-start;padding:14px 20px;border-bottom:1px solid var(--line)}
   .dlg-foot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);background:var(--surface2)}
 
   .sb-expand{position:fixed;left:14px;top:14px;z-index:40;width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--text2);font-size:13px}
   .sb-expand:hover{color:var(--text);background:var(--hov)}
   .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--text3)}
-  .pending{font-size:12px;color:var(--text3);animation:skPulse 1.4s ease-in-out infinite}
+  .pending{font-size:12px;color:var(--text3);animation:skPulse 1.4s ease-in-out infinite;grid-column:1 / -1}
 </style>
 </head>
-<body data-theme="dark">
+<body>
 
 <div class="app" id="app"></div>
-<div id="askRoot"></div>
 <div id="dialogRoot"></div>
 
 <script>
@@ -289,14 +294,19 @@ const GALLERY_TILES = [
 
 const GALLERY_ASSET_V = '3'; // bump to bust /api/tile cache
 
+function readStoredTheme() {
+  try { return localStorage.getItem('sl-theme') === 'light' ? 'light' : 'dark'; }
+  catch { return 'dark'; }
+}
+
 const S = {
-  theme: 'dark', sbOpen: true, tab: 'single',
+  theme: readStoredTheme(), sbOpen: true, tab: 'single',
   model: 'after', posT: 0.70, negT: 0.30,
   cmpTile: 'positive-1', cmpModel: 'before',
   current: null,
   cache: {}, gallery: {},
   queue: [], queueOpen: true, queuePulse: false,
-  evOpen: false, askOpen: false, msgs: [], askPending: false,
+  evOpen: false, msgs: [], askPending: false,
   dialogKey: null,
   trustEnterKey: null,
   freshQueueKey: null,
@@ -369,12 +379,14 @@ function reasonLineHTML(line, metrics) {
 }
 
 function metricValueHTML(frac) {
-  return pct(frac) + ' <span style="font-size:12px;font-weight:600;color:var(--text3)">\u00b7 ' + metricLevel(frac) + '</span>';
+  const level = metricLevel(frac);
+  const hot = level === 'high' ? ' hot' : '';
+  return '<span class="v' + hot + '">' + pct(frac) +
+    ' <span class="qual">\u00b7 ' + level + '</span></span>';
 }
 
-function metricsBlockHTML(metrics, extraClass) {
-  const cls = 'metrics' + (extraClass ? ' ' + extraClass : '');
-  return '<div class="' + cls + '">' +
+function metricsBlockHTML(metrics) {
+  return '<div class="metrics">' +
     metricHTML(METRIC_COPY.focus.label, metricValueHTML(metrics.topk_mass), METRIC_COPY.focus.def) +
     metricHTML(METRIC_COPY.corner.label, metricValueHTML(metrics.corner_ratio), METRIC_COPY.corner.def) +
     metricHTML(METRIC_COPY.edge.label, metricValueHTML(metrics.edge_ratio), METRIC_COPY.edge.def) +
@@ -505,7 +517,7 @@ function takeCardEnter(e) {
 }
 
 function closeTransient() {
-  S.askOpen = false; S.msgs = []; S.askPending = false; S.dialogKey = null;
+  S.msgs = []; S.askPending = false; S.dialogKey = null;
 }
 
 function validUploads(files) {
@@ -799,14 +811,7 @@ async function ensureLocalPositiveAudit() {
       if (q) q.outerHTML = queueHTML();
     }
     if (tierForScore(next.analysis.score) !== 'POSITIVE') return;
-    const slot2 = document.getElementById('trustSlot');
-    if (slot2) {
-      slot2.dataset.kind = 'audit';
-      slot2.innerHTML = trustCardHTML(next, { enter: takeCardEnter(next) });
-    } else {
-      render();
-    }
-    renderAsk();
+    render();
   } catch (error) {
     if (S.current && S.current.runId === runId) {
       const slot3 = document.getElementById('trustSlot');
@@ -819,6 +824,16 @@ async function ensureLocalPositiveAudit() {
   } finally {
     S.auditPending = false;
   }
+}
+
+function detectorBannerHTML(tier, score, vt, id) {
+  return '<div class="banner"' + (id ? ' id="' + id + '"' : '') + ' data-tier="' + tier + '" style="border-color:' + vt.ln + ';background:' + vt.bg + ';color:' + vt.c + '">' +
+    '<span class="dot" style="background:' + vt.c + '"></span>' +
+    '<span class="banner-tier" style="color:' + vt.c + '">' + tier + '</span>' +
+    '<span class="banner-label">Detector call</span>' +
+    '<span class="banner-div"></span>' +
+    '<span class="banner-score-label">Model score</span>' +
+    '<span class="banner-score" style="color:' + vt.c + '">' + score.toFixed(4) + '</span></div>';
 }
 
 function resultHTML() {
@@ -837,17 +852,15 @@ function resultHTML() {
   const vt = toneVars(TONE[tier]);
   const kind = trustBelowKind(e);
   const enter = kind === 'audit' && takeCardEnter(e);
+  const showAsk = kind === 'audit' && e.audit && e.phase === 'done';
   return '<section id="resultSection" style="margin-top:22px">' +
-    '<div class="banner" id="detectorBanner" data-tier="' + tier + '" style="border-color:' + vt.ln + ';background:' + vt.bg + '">' +
-    '<span class="dot" style="background:' + vt.c + '"></span>' +
-    '<span class="banner-tier" style="font-size:14px;font-weight:700;letter-spacing:.07em;color:' + vt.c + '">' + tier + '</span>' +
-    '<span style="font-size:12px;color:var(--text3)">Detector call</span>' +
-    '<span style="margin-left:auto;font-size:12px;color:var(--text3)">Model score</span>' +
-    '<span class="banner-score" style="font-family:var(--mono);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:' + vt.c + '">' + a.score.toFixed(4) + '</span></div>' +
+    detectorBannerHTML(tier, a.score, vt, 'detectorBanner') +
     '<div class="pair">' +
     '<figure style="margin:0"><figcaption class="figcap">Original tile</figcaption><div class="tile-img" style="background-image:url(\'' + a.original_png + '\')"></div></figure>' +
     '<figure style="margin:0"><figcaption class="figcap">Where the model looked</figcaption><div class="tile-img" style="background-image:url(\'' + a.overlay_png + '\')"></div></figure>' +
-    '</div><div id="trustSlot" data-kind="' + kind + '" style="margin-top:20px">' + trustBelowHTML(e, { enter: enter }) + '</div></section>';
+    '</div><div id="trustSlot" data-kind="' + kind + '" style="margin-top:14px">' + trustBelowHTML(e, { enter: enter }) + '</div>' +
+    (showAsk ? askInlineHTML() : '') +
+    '</section>';
 }
 
 function stripHTML(dotColor, title, body) {
@@ -859,14 +872,19 @@ function stripHTML(dotColor, title, body) {
 
 function loadingCardHTML() {
   return '<div class="card"><div class="card-body">' +
-    '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
-    '<span class="src-chip src-live"><span class="live-dot pulsing"></span>LIVE</span></div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-top:16px"><span class="spinner"></span>' +
-    '<span style="font-size:13px;color:var(--text2)">Claude is checking model attention</span></div>' +
+    '<div class="ac-title" style="margin-top:0">Claude attention check</div>' +
+    '<div class="ac-status"><span class="spinner"></span><span>Claude is checking model attention</span>' +
+    '<span class="sep">\u00b7</span><span class="live-dot pulsing"></span><span>Served live</span></div>' +
     '<div class="sk" style="width:72%;margin-top:16px"></div>' +
     '<div class="sk" style="width:54%;margin-top:9px;animation-delay:.2s"></div>' +
     '<div class="sk" style="width:34%;margin-top:9px;animation-delay:.4s"></div>' +
     '</div><div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span></div></div>';
+}
+
+function liveStatusHTML(live) {
+  return live
+    ? '<span class="live-dot"></span><span>Served live</span>'
+    : '<span>Cached this session</span>';
 }
 
 function trustCardHTML(e, opts) {
@@ -875,75 +893,80 @@ function trustCardHTML(e, opts) {
   const live = e.source === 'LIVE';
   const routed = (au.status === 'FLAGGED' || au.status === 'DEFER') && S.queue.includes(e.key);
   const enter = !opts || opts.enter !== false;
+  const expanded = opts && opts.expanded;
   const meta = e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + ' \u00b7 completed ' + (e.completed || nowUTC()) +
     ' \u00b7 audit ' + (e.latency || '-') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
-  return '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
-    '<div style="display:flex;align-items:center;gap:10px"><span class="eyebrow" style="font-weight:700;letter-spacing:.1em">Claude attention check</span>' +
-    (live
-      ? '<span class="src-chip src-live"><span class="live-dot"></span>LIVE</span>'
-      : '<span class="src-chip src-cached">Cached \u00b7 this session</span>') + '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-top:13px">' +
+  const line3 = au.reason_lines[2] || (au.defer_reason || '');
+  let body = '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
     '<span class="status-pill" style="color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
-    '<span style="font-size:13px;color:var(--text2)">Attention check ' + statusOutcome(au.status) + '</span></div>' +
-    '<div style="margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--text)">' + reasonLineHTML(au.reason_lines[0], a.metrics) + '</div>' +
-    '<div style="margin-top:3px;font-size:13.5px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[1] || '', a.metrics) + '</div>' +
-    (routed
-      ? '<div class="routed"><span style="width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex:none"></span>' +
-        '<span style="font-size:12.5px;color:var(--text2)">Added to the review queue</span></div>'
-      : '') +
-    '<button class="ev-toggle" data-action="toggleEv"><span class="chev' + (S.evOpen ? ' open' : '') + '"></span>View evidence</button>' +
-    '<div class="ev-wrap' + (S.evOpen ? ' open' : '') + '"><div class="ev-inner"><div style="padding-top:13px">' +
-    '<div style="font-size:13px;line-height:1.6;color:var(--text2)">' + reasonLineHTML(au.reason_lines[2] || (au.defer_reason || ''), a.metrics) + '</div>' +
-    metricsBlockHTML(a.metrics) +
-    '<div class="meta-line">' + meta + '</div></div></div></div>' +
-    '</div><div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span>' +
-    '<button class="ask-btn' + (S.askOpen ? ' open' : '') + '" data-action="toggleAsk">Ask Claude<span class="chev"></span></button></div></div>';
+    '<div class="ac-title">Claude attention check</div>' +
+    '<div class="ac-status"><span>Attention check ' + statusOutcome(au.status) + '</span>' +
+    '<span class="sep">\u00b7</span>' + liveStatusHTML(live) + '</div>' +
+    '<div class="ac-reason">' + reasonLineHTML(au.reason_lines[0], a.metrics) + '</div>' +
+    '<div class="ac-reason-2">' + reasonLineHTML(au.reason_lines[1] || '', a.metrics) + '</div>';
+  if (expanded) {
+    if (line3) body += '<div class="ac-reason-3">' + reasonLineHTML(line3, a.metrics) + '</div>';
+    body += metricsBlockHTML(a.metrics) + '<div class="meta-line">' + meta + '</div>';
+  } else {
+    if (routed) {
+      body += '<div class="routed"><span style="width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex:none"></span>' +
+        '<span>Added to the review queue</span></div>';
+    }
+    body += '<button class="ev-toggle" data-action="toggleEv"><span class="chev' + (S.evOpen ? ' open' : '') + '"></span>View evidence</button>' +
+      '<div class="ev-wrap' + (S.evOpen ? ' open' : '') + '"><div class="ev-inner"><div style="padding-top:4px">' +
+      (line3 ? '<div class="ac-reason-3" style="margin-top:10px">' + reasonLineHTML(line3, a.metrics) + '</div>' : '') +
+      metricsBlockHTML(a.metrics) +
+      '<div class="meta-line">' + meta + '</div></div></div></div>';
+  }
+  body += '</div>';
+  if (!expanded) {
+    body += '<div class="card-foot"><span class="card-foot-note">Detector class unchanged \u00b7 Final judgment remains with the reviewer</span></div>';
+  }
+  return body + '</div>';
 }
 
 function metricHTML(k, v, d) {
-  return '<div class="metric"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="d">' + d + '</div></div>';
+  return '<div class="metric"><div class="k">' + k + '</div>' + v + '<div class="d">' + d + '</div></div>';
 }
 
-// Ask panel
+function askInlineHTML() {
+  return '<div class="ask-inline">' +
+    '<div class="ask-label">Ask Claude (optional follow-up)</div>' +
+    '<div class="ask-inline-row">' +
+    '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026">' +
+    '<button class="btn-primary ask-send" data-action="askSend">Ask</button></div>' +
+    '<div class="ask-inline-log" id="askLog"></div></div>';
+}
 
 function renderAsk() {
-  const root = document.getElementById('askRoot');
+  const log = document.getElementById('askLog');
+  const inp = document.getElementById('askInput');
   const e = S.current;
-  const open = S.askOpen && e && e.audit && e.phase === 'done';
-  if (!open) { root.innerHTML = ''; return; }
+  if (!log || !e || !e.audit || e.phase !== 'done') return;
+
   const chips = QA_CHIPS[e.audit.status] || [];
   const showChips = !S.msgs.length && !S.askPending;
-  let msgs = '';
-  if (!S.msgs.length && !S.askPending) {
-    msgs = '<div style="font-size:12px;color:var(--text3);line-height:1.55">Questions stay scoped to this case - the map, the metrics, and the routing decision.</div>';
-  }
   const metrics = e.analysis.metrics;
-  msgs += S.msgs.map((m) => m.you
-    ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><div class="msg-who">You</div><div class="msg-you">' + esc(m.text) + '</div></div>'
-    : '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><div class="msg-who">Claude</div><div class="msg-claude">' + reasonLineHTML(m.text, metrics) + '</div></div>'
-  ).join('');
-  if (S.askPending) msgs += '<div class="pending">Claude is looking at the map\u2026</div>';
-
-  root.innerHTML = '<div class="ask-panel">' +
-    '<div class="ask-head"><div style="flex:1;min-width:0">' +
-    '<div style="font-size:13px;font-weight:600;color:var(--text)">Ask about this attention check</div>' +
-    '<div style="font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:3px">' + esc(caseTag(e)) + ' \u00b7 evidence ' + shortHash(e.analysis.evidence_hash) + '</div></div>' +
-    '<button class="icon-btn" style="border:0;width:24px;height:24px;font-size:15px" data-action="closeAsk">\u00d7</button></div>' +
-    '<div class="ask-msgs">' + msgs + '</div>' +
-    (showChips && chips.length
-      ? '<div class="chips">' + chips.map((c) => '<button class="chip-q" data-action="askChip" data-arg="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>'
-      : '') +
-    '<div class="ask-foot"><div style="display:flex;gap:8px">' +
-    '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026">' +
-    '<button class="btn-primary" data-action="askSend" style="flex:none">Send</button></div>' +
-    '<div style="display:flex;margin-top:7px"><span style="font-size:10.5px;color:var(--text3)">Describes model attention only - never a diagnosis.</span>' +
-    '<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)" id="askCount">0/300</span></div></div></div>';
-
-  const inp = document.getElementById('askInput');
-  inp.addEventListener('input', () => { document.getElementById('askCount').textContent = inp.value.length + '/300'; });
-  inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') sendAsk(inp.value); });
-  const msgsEl = root.querySelector('.ask-msgs');
-  msgsEl.scrollTop = msgsEl.scrollHeight;
+  let html = '';
+  if (S.msgs.length || S.askPending) {
+    html += '<div class="ask-msgs">';
+    html += S.msgs.map((m) => m.you
+      ? '<div class="msg-who">You</div><div class="msg-you">' + esc(m.text) + '</div>'
+      : '<div class="msg-who plain">Claude</div><div class="msg-claude">' + reasonLineHTML(m.text, metrics) + '</div>'
+    ).join('');
+    if (S.askPending) html += '<div class="pending">Claude is looking at the map\u2026</div>';
+    html += '</div>';
+  }
+  if (showChips && chips.length) {
+    html += '<div class="chips">' + chips.map((c) =>
+      '<button class="chip-q" data-action="askChip" data-arg="' + esc(c) + '">' + esc(c) + '</button>'
+    ).join('') + '</div>';
+  }
+  log.innerHTML = html;
+  if (inp && !inp.dataset.bound) {
+    inp.dataset.bound = '1';
+    inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') sendAsk(inp.value); });
+  }
 }
 
 async function sendAsk(text) {
@@ -952,6 +975,8 @@ async function sendAsk(text) {
   if (!q || S.askPending || !e || !e.audit) return;
   S.msgs.push({ you: true, text: q });
   S.askPending = true;
+  const inp = document.getElementById('askInput');
+  if (inp) inp.value = '';
   renderAsk();
   const context = {
     file: e.file, model: e.model, status: e.audit.status,
@@ -974,41 +999,30 @@ function renderDialog() {
   const root = document.getElementById('dialogRoot');
   const e = S.dialogKey ? S.cache[S.dialogKey] : null;
   if (!e) { root.innerHTML = ''; return; }
-  const a = e.analysis, au = e.audit;
-  const st = toneVars(TONE[au.status]);
+  const a = e.analysis;
   const tier = tierForScore(a.score);
   const vt = toneVars(TONE[tier]);
-  const reasons = au.reason_lines.map((line, index) =>
-    '<div style="margin-top:' + (index ? '3px' : '10px') + ';font-size:13px;line-height:1.6;color:' +
-    (index ? 'var(--text2)' : 'var(--text)') + '">' + reasonLineHTML(line, a.metrics) + '</div>'
-  ).join('');
   root.innerHTML = '<div class="overlay" data-action="closeDlg"><div class="dialog" data-stop="1">' +
-    '<div class="dlg-head"><div><div style="font-size:14.5px;font-weight:600;color:var(--text)">Queued case</div>' +
+    '<div class="dlg-head"><div><div style="font-size:14px;font-weight:600;color:var(--text)">Queued case</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:3px">' + e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + '</div></div>' +
     '<button class="icon-btn" style="margin-left:auto;border:0;font-size:16px" data-action="closeDlg">\u00d7</button></div>' +
-    '<div style="padding:18px 20px">' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
-    '<figure style="margin:0"><figcaption class="figcap" style="font-size:10px">Original tile</figcaption><div class="tile-img" style="border-radius:10px;background-image:url(\'' + a.original_png + '\')"></div></figure>' +
-    '<figure style="margin:0"><figcaption class="figcap" style="font-size:10px">Where the model looked</figcaption><div class="tile-img" style="border-radius:10px;background-image:url(\'' + a.overlay_png + '\')"></div></figure></div>' +
-    '<div class="dlg-banner" style="border-color:' + vt.ln + ';background:' + vt.bg + '">' +
-    '<span style="width:7px;height:7px;border-radius:50%;background:' + vt.c + ';flex:none"></span>' +
-    '<span style="font-size:12.5px;font-weight:700;letter-spacing:.07em;color:' + vt.c + '">' + tier + '</span>' +
-    '<span style="font-size:11.5px;color:var(--text3)">Detector call</span>' +
-    '<span style="margin-left:auto;font-family:var(--mono);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:' + vt.c + '">' + a.score.toFixed(4) + '</span></div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-top:14px">' +
-    '<span class="status-pill" style="font-size:10.5px;padding:3px 10px;color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
-    '<span style="font-size:12.5px;color:var(--text2)">Attention check ' + statusOutcome(au.status) + '</span></div>' +
-    reasons +
-    metricsBlockHTML(a.metrics, 'dlg-metrics') +
+    '<div style="padding:20px">' +
+    detectorBannerHTML(tier, a.score, vt) +
+    '<div class="pair" style="margin-top:14px">' +
+    '<figure style="margin:0"><figcaption class="figcap">Original tile</figcaption><div class="tile-img" style="background-image:url(\'' + a.original_png + '\')"></div></figure>' +
+    '<figure style="margin:0"><figcaption class="figcap">Where the model looked</figcaption><div class="tile-img" style="background-image:url(\'' + a.overlay_png + '\')"></div></figure></div>' +
+    '<div style="margin-top:14px">' + trustCardHTML(e, { enter: false, expanded: true }) + '</div>' +
     '</div>' +
-    '<div class="dlg-foot"><span style="font-size:11px;color:var(--text3)">Actions stay in this session.</span>' +
-    '<button class="btn-ghost" style="margin-left:auto" data-action="closeDlg">Keep in queue</button>' +
-    '<button class="btn-primary" data-action="markReviewed">Mark reviewed</button></div></div></div>';
+    '<div class="dlg-foot">' +
+    '<button class="btn-primary" data-action="markReviewed">Mark reviewed</button>' +
+    '<button class="btn-ghost" data-action="closeDlg">Keep in queue</button>' +
+    '<span style="font-size:11px;color:var(--text3)">Actions stay in this session.</span></div></div></div>';
 }
 
 function setTheme(t) {
   S.theme = t;
   document.body.dataset.theme = t;
+  try { localStorage.setItem('sl-theme', t); } catch { /* storage unavailable */ }
   render();
 }
 
@@ -1088,22 +1102,6 @@ document.addEventListener('click', (ev) => {
       if (chev) chev.classList.toggle('open', S.evOpen);
       break;
     }
-    case 'toggleAsk':
-      S.askOpen = !S.askOpen;
-      {
-        const askBtn = document.querySelector('.ask-btn');
-        if (askBtn) askBtn.classList.toggle('open', S.askOpen);
-      }
-      renderAsk();
-      break;
-    case 'closeAsk':
-      S.askOpen = false;
-      {
-        const askBtn = document.querySelector('.ask-btn');
-        if (askBtn) askBtn.classList.remove('open');
-      }
-      renderAsk();
-      break;
     case 'askChip': sendAsk(arg); break;
     case 'askSend': { const inp = document.getElementById('askInput'); if (inp) { sendAsk(inp.value); } break; }
     case 'openCase': S.dialogKey = arg; render(); break;
@@ -1127,7 +1125,6 @@ document.addEventListener('drop', (ev) => {
 function applyThresholdsLive() {
   if (!thresholdsOk()) {
     S.dialogKey = null;
-    S.askOpen = false;
     S.msgs = [];
     S.threshInvalidView = true;
     render();
@@ -1185,6 +1182,11 @@ function applyThresholdsLive() {
     ensureLocalPositiveAudit();
     return;
   }
+  // Ask block sits outside the slot - re-render when audit presence flips
+  if ((kind === 'audit') !== (slot.dataset.kind === 'audit')) {
+    render();
+    return;
+  }
   slot.dataset.kind = kind;
   slot.innerHTML = trustBelowHTML(e, { enter: false });
 }
@@ -1219,12 +1221,6 @@ document.addEventListener('change', (ev) => {
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== 'Escape') return;
   if (S.dialogKey) { S.dialogKey = null; render(); }
-  else if (S.askOpen) {
-    S.askOpen = false;
-    const askBtn = document.querySelector('.ask-btn');
-    if (askBtn) askBtn.classList.remove('open');
-    renderAsk();
-  }
 });
 
 // Boot
@@ -1251,6 +1247,7 @@ async function loadHealth() {
   }
 }
 
+document.body.dataset.theme = S.theme;
 render();
 loadHealth();
 setTimeout(() => runCase('positive-1', 'after', { forceLive: true }), 350);
