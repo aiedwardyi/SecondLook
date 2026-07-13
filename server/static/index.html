@@ -805,13 +805,7 @@ async function ensureLocalPositiveAudit() {
     };
     S.current = next;
     if (key) S.cache[key] = { ...next };
-    if (audit.status === 'FLAGGED' || audit.status === 'DEFER') {
-      addToQueue(key, true);
-      const q = document.querySelector('.queue-sec');
-      if (q) q.outerHTML = queueHTML();
-    }
-    if (tierForScore(next.analysis.score) !== 'POSITIVE') return;
-    render();
+    if (audit.status === 'FLAGGED' || audit.status === 'DEFER') addToQueue(key, true);
   } catch (error) {
     if (S.current && S.current.runId === runId) {
       const slot3 = document.getElementById('trustSlot');
@@ -822,7 +816,9 @@ async function ensureLocalPositiveAudit() {
       }
     }
   } finally {
+    // Clear before paint - render() while auditPending still true leaves the spinner up.
     S.auditPending = false;
+    if (S.current && S.current.runId === runId && S.current.audit) render();
   }
 }
 
