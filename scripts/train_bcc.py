@@ -60,10 +60,10 @@ def seed_worker(worker_id: int) -> None:
     random.seed(worker_seed)
 
 
-def build_correction_setup(correction: bool) -> tuple[str, Compose]:
+def build_correction_setup(correction: bool, seed: int | None = None) -> tuple[str, Compose]:
     """Single coupling point: padding mode and train transform always move together."""
     padding_mode = "reflect" if correction else "zeros"
-    train_transform = get_train_transforms(correction)
+    train_transform = get_train_transforms(correction, seed)
     return padding_mode, train_transform
 
 
@@ -286,7 +286,7 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_amp = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 
-    padding_mode, train_transform = build_correction_setup(args.correction)
+    padding_mode, train_transform = build_correction_setup(args.correction, args.seed)
     eval_transform = get_eval_transforms()
 
     train_dataset = HeidelbergBccDataset(args.csv_path, args.data_root, "Train", train_transform)

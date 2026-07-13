@@ -11,6 +11,15 @@ _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
+def _seed_child_transforms(transforms: list[A.BasicTransform], seed: int | None) -> None:
+    if seed is None:
+        return
+    seed_sequence = np.random.SeedSequence(seed)
+    for transform, child_sequence in zip(transforms, seed_sequence.spawn(len(transforms))):
+        child_seed = int(child_sequence.generate_state(1, dtype=np.uint32)[0])
+        transform.set_random_seed(child_seed)
+
+
 class HEDJitter(ImageOnlyTransform):
     """Per-channel multiplicative+additive jitter in HED stain space for stained tiles."""
 
@@ -36,7 +45,7 @@ class HEDJitter(ImageOnlyTransform):
         return ("sigma", "bias")
 
 
-def get_train_transforms(correction: bool) -> A.Compose:
+def get_train_transforms(correction: bool, seed: int | None = None) -> A.Compose:
     """Train pipeline; correction=True uses a random resized crop, False a fixed resize."""
     first = (
         A.RandomResizedCrop(
@@ -45,17 +54,18 @@ def get_train_transforms(correction: bool) -> A.Compose:
         if correction
         else A.Resize(_INPUT_SIZE, _INPUT_SIZE)
     )
-    return A.Compose(
-        [
-            first,
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            HEDJitter(sigma=0.05, bias=0.05, p=0.8),
-            A.Normalize(mean=_IMAGENET_MEAN, std=_IMAGENET_STD),
-            ToTensorV2(),
-        ]
-    )
+    transforms = [
+        first,
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.RandomRotate90(p=0.5),
+        HEDJitter(sigma=0.05, bias=0.05, p=0.8),
+        A.Normalize(mean=_IMAGENET_MEAN, std=_IMAGENET_STD),
+        ToTensorV2(),
+    ]
+    pipeline = A.Compose(transforms, seed=seed)
+    _seed_child_transforms(pipeline.transforms, seed)
+    return pipeline
 
 
 def get_eval_transforms() -> A.Compose:
