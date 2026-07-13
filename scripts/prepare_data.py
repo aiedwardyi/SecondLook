@@ -20,11 +20,11 @@ def _crossing_cases(df):
 
 def _missing_files(df, data_root):
     """Manifest `file` entries that are not a real file under data_root."""
-    base = data_root.resolve()
     missing = []
     for f in df["file"]:
-        p = (data_root / f).resolve()
-        if not (p.is_file() and p.is_relative_to(base)):
+        rel = Path(f)
+        # Reject absolute paths and parent hops; is_file still follows junctions.
+        if rel.is_absolute() or ".." in rel.parts or not (data_root / rel).is_file():
             missing.append(f)
     return missing
 
