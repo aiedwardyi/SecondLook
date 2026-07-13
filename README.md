@@ -22,7 +22,7 @@ The detector finds cancer. Claude decides whether to trust that finding.
 2. Open **Compare** on a positive tile.
 3. Note `before`: corner heat, Claude **FLAGGED**. Note `after`: tissue heat, Claude **VERIFIED**. Same detector confidence class; different trust.
 
-Video:
+Video: https://youtu.be/uSuEFsHgjWU
 
 ## What Claude does
 
@@ -155,3 +155,8 @@ Apache 2.0 (see LICENSE).
 
 - Edward Yi - Builder; Model Training, Evaluation, Trust Layer, and Product
 - Henry Lim, D.O., Chief Dermatology Resident Physician, Clinical Advisor
+
+## Acknowledgments
+
+**Built with Claude: Life Sciences** hackathon project.
+Hosts: Anthropic, Gladstone Institutes, and Cerebral Valley.
