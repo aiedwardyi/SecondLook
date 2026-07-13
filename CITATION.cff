@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "SecondLook: a trust layer for a skin-cancer detector"
+authors:
+  - family-names: Yi
+    given-names: Edward
+license: Apache-2.0
+repository-code: "https://github.com/aiedwardyi/SecondLook"
+url: "https://aiedwardyi-secondlook.hf.space/"
+type: software
