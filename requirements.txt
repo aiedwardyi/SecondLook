@@ -73,4 +73,4 @@ tzdata==2025.3
 urllib3==2.7.0
 uvicorn[standard]==0.44.0
 watchdog==6.0.0
-anthropic
+anthropic==0.116.0
