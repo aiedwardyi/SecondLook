@@ -53,10 +53,9 @@ python -m pip install fastapi "uvicorn[standard]" python-multipart anthropic==0.
 
 Stay in the activated venv for the rest of this guide.
 
-Git LFS is required for the shipped weights. If `weights/bcc_before.pth` is a tiny text pointer instead of a large binary:
+Git LFS is required for the shipped weights. If `weights/bcc_before.pth` is a tiny text pointer instead of a large binary, install Git LFS (Homebrew: `brew install git-lfs`, or https://git-lfs.com), then:
 
 ```
-brew install git-lfs
 git lfs install
 git lfs pull
 ```
@@ -84,7 +83,7 @@ bash run.sh
 Open http://127.0.0.1:8000
 
 - **Examples** - curated tiles (gallery ships in the repo; full Heidelberg data not required).
-- **Compare** - before/after money shot on one positive tile.
+- **Compare** - before/after attention on one positive tile.
 - Sidebar model toggle: `before` (corner heat) vs `after` (tissue heat).
 
 Stop the server with Ctrl+C.

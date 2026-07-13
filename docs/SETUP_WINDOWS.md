@@ -27,10 +27,12 @@ If you already have the folder, `cd` into it instead.
 
 ```
 python -m venv .venv
-.\.venv\Scripts\Activate.bat
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
+
+In cmd.exe use `.\.venv\Scripts\Activate.bat` instead of `Activate.ps1`.
 
 `requirements.txt` pulls CUDA builds of PyTorch when available. A machine without an NVIDIA GPU can still run the app and Grad-CAM on CPU; install may take several minutes either way. Stay in the activated venv for the rest of this guide.
 
@@ -64,7 +66,7 @@ The key stays on the server. It is never sent to the browser. Without a key, sco
 Open http://127.0.0.1:8000
 
 - **Examples** - curated tiles (gallery ships in the repo; full Heidelberg data not required).
-- **Compare** - before/after money shot on one positive tile.
+- **Compare** - before/after attention on one positive tile.
 - Sidebar model toggle: `before` (corner heat) vs `after` (tissue heat).
 
 Stop the server with Ctrl+C in the terminal.

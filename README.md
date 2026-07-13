@@ -96,8 +96,13 @@ Training the detector needs an NVIDIA GPU with roughly 10 GB of VRAM or more (de
 **Show saved test metrics without recomputing.** Committed run logs re-print on a fresh clone:
 
 ```
+# Windows
 .\results.bat before
 .\results.bat after
+
+# Mac
+python -m scripts.show_results --run-dir experiments/before
+python -m scripts.show_results --run-dir experiments/after
 ```
 
 **Retrain either model (optional, GPU).** See the setup guides for `train.bat` / train commands and the full Heidelberg data layout.
