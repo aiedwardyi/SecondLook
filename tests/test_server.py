@@ -432,6 +432,44 @@ def test_audit_coalesces_concurrent_same_hash(client, monkeypatch):
     assert calls["n"] == 1
 
 
+def test_audit_timeout_keeps_final_cached_result(client, monkeypatch):
+    _put_record()
+
+    async def race(*_a, **_k):
+        cache.set_audit(
+            "evidence",
+            AuditResponse(
+                status="VERIFIED",
+                reason_lines=["Attention stays on tissue.", "Map agrees."],
+                numbers_cited=["corner_ratio=0.08"],
+            ),
+            call_tier="POSITIVE",
+        )
+        raise TimeoutError()
+
+    monkeypatch.setattr(server_main.audit_coalesce, "run_once_async", race)
+    response = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "VERIFIED"
+
+
+def test_audit_uses_accepted_snapshot_if_evicted(client, monkeypatch):
+    _put_record()
+
+    def audit_after_evict(**_kwargs):
+        monkeypatch.setattr(cache, "_RECORDS", OrderedDict())
+        return AuditResult(
+            status="VERIFIED",
+            reason_lines=["Attention stays on tissue.", "Map agrees."],
+            numbers_cited=["corner_ratio=0.08"],
+        )
+
+    monkeypatch.setattr(server_main, "audit_tile", audit_after_evict)
+    response = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "VERIFIED"
+
+
 def test_audit_stores_defer_for_ask_but_does_not_reuse_on_audit(client, monkeypatch):
     _put_record()
     audit = Mock(

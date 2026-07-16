@@ -231,19 +231,20 @@ async def audit(body: AuditRequest) -> AuditResponse:
         return record.audit
 
     coalesce_key = f"{body.evidence_hash}:{call_tier}"
+    # Snapshot accepted at request time - pool queue may outlive LRU residency.
+    accepted = record
 
     def _run() -> AuditResponse:
         latest = cache.get(body.evidence_hash)
-        if latest is None:
-            raise HTTPException(status_code=404, detail="evidence not found")
-        if latest.audit is not None and latest.audit.status != "DEFER":
+        if latest is not None and latest.audit is not None and latest.audit.status != "DEFER":
             return latest.audit
+        src = latest if latest is not None else accepted
         result = audit_tile(
-            score=latest.score,
+            score=src.score,
             verdict=call_tier,
-            metrics=latest.metrics,
-            image_png=latest.overlay_png,
-            model_id=latest.model,
+            metrics=src.metrics,
+            image_png=src.overlay_png,
+            model_id=src.model,
         )
         if result.error:
             _LOGGER.warning("attention audit deferred: %s", result.error)
@@ -264,6 +265,10 @@ async def audit(body: AuditRequest) -> AuditResponse:
         return await audit_coalesce.run_once_async(coalesce_key, _run_async, timeout=300.0)
     except TimeoutError:
         _LOGGER.warning("attention audit coalesce wait timed out for %s", body.evidence_hash)
+        # Work may have finished at the boundary and already cached a final audit.
+        latest = cache.get(body.evidence_hash)
+        if latest is not None and latest.audit is not None and latest.audit.status != "DEFER":
+            return latest.audit
         response = AuditResponse(
             status="DEFER",
             reason_lines=[
