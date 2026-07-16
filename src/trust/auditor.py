@@ -5,7 +5,11 @@ from __future__ import annotations
 import base64
 import json
 import os
+import random
 import re
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -14,6 +18,13 @@ VALID_STATUS = frozenset({"VERIFIED", "FLAGGED", "DEFER"})
 DEFER_EVIDENCE = "EVIDENCE_AMBIGUOUS"
 DEFER_UNAVAILABLE = "AUDIT_UNAVAILABLE"
 MAX_FOLLOWUP_CHARS = 300
+
+# CLAUDE_MAX_CONCURRENT, CLAUDE_MAX_RETRIES, CLAUDE_RETRY_BASE_SEC.
+# Anthropic client uses max_retries=0; this loop owns retries.
+_DEFAULT_MAX_CONCURRENT = 3
+_DEFAULT_MAX_RETRIES = 2
+_DEFAULT_RETRY_BASE_SEC = 0.8
+_CLAUDE_QUEUE_WAIT_SEC = 90.0
 
 # Intensity bands - keep in sync with server/static/index.html METRIC_LEVEL.
 METRIC_LEVEL_MODEST = 0.15
@@ -120,6 +131,118 @@ def fail_closed(reason: str, *, raw: str | None = None) -> AuditResult:
         error=reason,
         defer_reason=DEFER_UNAVAILABLE,
     )
+
+
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return max(minimum, int(raw))
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return max(0.05, float(raw))
+    except ValueError:
+        return default
+
+
+_CLAUDE_CONCURRENT = _env_int("CLAUDE_MAX_CONCURRENT", _DEFAULT_MAX_CONCURRENT)
+_CLAUDE_SEM = threading.BoundedSemaphore(_CLAUDE_CONCURRENT)
+_CLAUDE_POOL: ThreadPoolExecutor | None = None
+_CLAUDE_POOL_LOCK = threading.Lock()
+
+
+def claude_executor() -> ThreadPoolExecutor:
+    global _CLAUDE_POOL
+    with _CLAUDE_POOL_LOCK:
+        if _CLAUDE_POOL is None:
+            _CLAUDE_POOL = ThreadPoolExecutor(
+                max_workers=_CLAUDE_CONCURRENT,
+                thread_name_prefix="claude",
+            )
+        return _CLAUDE_POOL
+
+
+def shutdown_claude_executor() -> None:
+    global _CLAUDE_POOL
+    with _CLAUDE_POOL_LOCK:
+        if _CLAUDE_POOL is not None:
+            _CLAUDE_POOL.shutdown(wait=False, cancel_futures=True)
+            _CLAUDE_POOL = None
+
+
+def _is_retryable_api_error(exc: BaseException) -> bool:
+    code = getattr(exc, "status_code", None)
+    if code in (408, 409, 429, 500, 502, 503, 504, 529):
+        return True
+    name = type(exc).__name__.lower()
+    if any(s in name for s in ("ratelimit", "overloaded", "apiconnection", "timeout", "apitimeout")):
+        return True
+    msg = str(exc).lower()
+    return any(
+        s in msg
+        for s in (
+            "rate limit",
+            "overloaded",
+            "timeout",
+            "timed out",
+            "connection reset",
+            "connection error",
+            "temporarily unavailable",
+            " 429",
+            "429 ",
+            " 529",
+            "529 ",
+        )
+    )
+
+
+def _claude_messages_create(
+    *,
+    api_key: str,
+    model: str,
+    max_tokens: int,
+    system: str,
+    content: list[dict[str, Any]],
+    timeout: float = 60.0,
+) -> Any:
+    import anthropic
+
+    retries = _env_int("CLAUDE_MAX_RETRIES", _DEFAULT_MAX_RETRIES, minimum=0)
+    base = _env_float("CLAUDE_RETRY_BASE_SEC", _DEFAULT_RETRY_BASE_SEC)
+    last_exc: BaseException | None = None
+    # One initial attempt + retries.
+    attempts = retries + 1
+
+    for attempt in range(attempts):
+        if not _CLAUDE_SEM.acquire(timeout=_CLAUDE_QUEUE_WAIT_SEC):
+            raise TimeoutError("claude concurrency queue timeout")
+        try:
+            client = anthropic.Anthropic(api_key=api_key, timeout=timeout, max_retries=0)
+            return client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": content}],
+            )
+        except Exception as exc:
+            last_exc = exc
+            if attempt + 1 >= attempts or not _is_retryable_api_error(exc):
+                raise
+        finally:
+            # Release before sleep so other calls can proceed during backoff.
+            _CLAUDE_SEM.release()
+        time.sleep(base * (2**attempt) + random.uniform(0.0, 0.25))
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def plain_reason_line(text: str) -> str:
@@ -307,12 +430,12 @@ def audit_tile(
             return fail_closed(f"image: {exc}")
 
     try:
-        client = anthropic.Anthropic(api_key=key, timeout=60.0)
-        msg = client.messages.create(
+        msg = _claude_messages_create(
+            api_key=key,
             model=model,
             max_tokens=400,
             system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": content}],
+            content=content,
         )
         text = "".join(
             block.text for block in msg.content if getattr(block, "type", None) == "text"
@@ -411,12 +534,12 @@ def follow_up_attention(
     ]
 
     try:
-        client = anthropic.Anthropic(api_key=key, timeout=60.0)
-        msg = client.messages.create(
+        msg = _claude_messages_create(
+            api_key=key,
             model=model,
             max_tokens=220,
             system=FOLLOWUP_SYSTEM,
-            messages=[{"role": "user", "content": content}],
+            content=content,
         )
         text = "".join(
             block.text for block in msg.content if getattr(block, "type", None) == "text"

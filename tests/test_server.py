@@ -1,6 +1,8 @@
 """FastAPI server tests."""
 
 import io
+import threading
+import time
 from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import Mock
@@ -9,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from server import cache
+from server import audit_coalesce, cache
 from server import main as server_main
 from server.cache import AnalysisRecord
 from server.inference import CANONICAL_TILES, InferenceResult, build_evidence_hash
@@ -43,6 +45,7 @@ class FakePipeline:
 @pytest.fixture(autouse=True)
 def isolated_cache(monkeypatch):
     monkeypatch.setattr(cache, "_RECORDS", OrderedDict())
+    monkeypatch.setattr(audit_coalesce, "_INFLIGHT", {})
 
 
 @pytest.fixture
@@ -383,6 +386,104 @@ def test_audit_reuses_cached_result(client, monkeypatch):
         image_png=b"overlay",
         model_id="after",
     )
+
+
+def test_audit_coalesces_concurrent_same_hash(client, monkeypatch):
+    _put_record()
+    started = threading.Event()
+    release = threading.Event()
+    calls = {"n": 0}
+    calls_lock = threading.Lock()
+
+    def slow_audit(**_kwargs):
+        with calls_lock:
+            calls["n"] += 1
+        started.set()
+        assert release.wait(timeout=5)
+        return AuditResult(
+            status="VERIFIED",
+            reason_lines=["Attention stays on tissue.", "Map agrees."],
+            numbers_cited=["corner_ratio=0.08"],
+        )
+
+    monkeypatch.setattr(server_main, "audit_tile", slow_audit)
+    results: list = []
+    errors: list = []
+
+    def hit():
+        try:
+            results.append(client.post("/api/audit", json={"evidence_hash": "evidence"}))
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    t1 = threading.Thread(target=hit)
+    t2 = threading.Thread(target=hit)
+    t1.start()
+    assert started.wait(timeout=5)
+    t2.start()
+    time.sleep(0.15)
+    release.set()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert errors == []
+    assert len(results) == 2
+    assert all(r.status_code == 200 for r in results)
+    assert results[0].json()["status"] == "VERIFIED"
+    assert results[1].json() == results[0].json()
+    with calls_lock:
+        assert calls["n"] == 1
+
+
+def test_audit_timeout_keeps_final_cached_result(client, monkeypatch):
+    _put_record()
+
+    async def race(*_a, **_k):
+        cache.set_audit(
+            "evidence",
+            AuditResponse(
+                status="VERIFIED",
+                reason_lines=["Attention stays on tissue.", "Map agrees."],
+                numbers_cited=["corner_ratio=0.08"],
+            ),
+            call_tier="POSITIVE",
+        )
+        raise TimeoutError()
+
+    monkeypatch.setattr(server_main.audit_coalesce, "run_once_async", race)
+    response = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "VERIFIED"
+    stored = cache.get("evidence")
+    assert stored is not None and stored.audit is not None
+    assert stored.audit.status == "VERIFIED"
+
+
+def test_audit_uses_accepted_snapshot_if_evicted(client, monkeypatch):
+    _put_record()
+    real_get = cache.get
+    hits = {"n": 0}
+
+    def get_then_miss(key: str):
+        hits["n"] += 1
+        if hits["n"] == 1:
+            return real_get(key)
+        return None
+
+    monkeypatch.setattr(cache, "get", get_then_miss)
+    audit = Mock(
+        return_value=AuditResult(
+            status="VERIFIED",
+            reason_lines=["Attention stays on tissue.", "Map agrees."],
+            numbers_cited=["corner_ratio=0.08"],
+        )
+    )
+    monkeypatch.setattr(server_main, "audit_tile", audit)
+    response = client.post("/api/audit", json={"evidence_hash": "evidence"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "VERIFIED"
+    audit.assert_called_once()
+    assert hits["n"] >= 2
 
 
 def test_audit_stores_defer_for_ask_but_does_not_reuse_on_audit(client, monkeypatch):

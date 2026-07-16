@@ -6,8 +6,8 @@ from threading import RLock
 
 from server.schemas import AuditResponse, ModelId, Tier
 
-# Match Streamlit session cache scale; bounds PNG-heavy records.
-MAX_RECORDS = 16
+# Bounds PNG-heavy records.
+MAX_RECORDS = 48
 
 
 @dataclass(frozen=True)
@@ -94,3 +94,25 @@ def set_audit(
         )
         _RECORDS.move_to_end(evidence_hash)
         return True
+
+
+def set_audit_soft(
+    evidence_hash: str,
+    audit: AuditResponse,
+    *,
+    call_tier: Tier | None = None,
+) -> AuditResponse | None:
+    """Store audit unless a final audit is already present; return that final if so."""
+    with _LOCK:
+        record = _RECORDS.get(evidence_hash)
+        if record is None:
+            return None
+        if _is_final_audit(record.audit):
+            return _copy_audit(record.audit)
+        _RECORDS[evidence_hash] = replace(
+            record,
+            audit=_copy_audit(audit),
+            audit_call_tier=call_tier if call_tier is not None else record.audit_call_tier,
+        )
+        _RECORDS.move_to_end(evidence_hash)
+        return None

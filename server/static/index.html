@@ -133,9 +133,12 @@
   .select{width:100%;margin-top:8px;padding:10px 12px;font-size:13px;font-family:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line2);border-radius:10px;outline:none;cursor:pointer}
 
   .banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:10px;border:1px solid}
+  .banner-main{display:flex;align-items:center;gap:12px;min-width:0}
+  .banner-text{display:flex;align-items:center;gap:12px;min-width:0}
   .banner-tier{font-size:26px;font-weight:700;letter-spacing:.03em;line-height:1}
   .banner-label{font-size:12px;color:var(--text2)}
   .banner-div{width:1px;height:18px;background:currentColor;opacity:.35;flex:none}
+  .banner-score-group{display:flex;align-items:center;gap:12px;flex:none}
   .banner-score-label{font-size:11px;color:var(--text2)}
   .banner-score{font-family:var(--mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
   .dot{width:8px;height:8px;border-radius:50%;flex:none}
@@ -176,7 +179,9 @@
   .metric .v .qual{font-size:12px;font-weight:400;color:var(--text2)}
   .metric .v.hot{color:var(--warn)}
   .metric .d{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.45}
-  .meta-line{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--text3)}
+  .meta-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--text3);line-height:1.55}
+  .meta-item{white-space:nowrap}
+  .meta-item:not(:last-child)::after{content:'\00b7';margin-left:8px;opacity:.75}
 
   .ask-inline{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:16px}
   .ask-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
@@ -248,12 +253,23 @@
     .figcap{font-size:10px;letter-spacing:.08em;margin-bottom:6px}
     .ex-grid{grid-template-columns:repeat(2,1fr);gap:12px}
     .metrics{grid-template-columns:1fr}
-    .banner{flex-wrap:wrap;gap:8px 12px}
-    .banner-tier{font-size:20px}
+    .banner{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:14px;row-gap:0;padding:12px 14px}
+    .banner-div{display:none}
+    .banner-main{min-width:0}
+    .banner-text{flex-direction:column;align-items:flex-start;gap:3px}
+    .banner-tier{font-size:18px;letter-spacing:.02em}
+    .banner-label{font-size:11px;line-height:1.2}
+    .banner-score-group{flex-direction:column;align-items:flex-end;gap:3px}
+    .banner-score{font-size:16px;line-height:1;order:-1}
+    .banner-score-label{font-size:10px;line-height:1.2}
+    .meta-line{gap:6px 8px}
+    .meta-item:not(:last-child)::after{margin-left:6px}
     .ask-msgs{grid-template-columns:1fr;row-gap:4px}
     .msg-who{padding-top:0}
-    .ask-inline-row{flex-wrap:wrap}
-    .ask-send{flex:1}
+    .ask-inline{padding:14px}
+    .ask-inline-row{flex-direction:row;align-items:center;gap:8px;margin-top:12px;flex-wrap:nowrap}
+    .ask-input{flex:1;min-width:0;height:44px;font-size:16px;border-radius:10px}
+    .ask-send{flex:none;height:44px;padding:0 16px;border-radius:10px;white-space:nowrap}
     .overlay{padding:max(12px,env(safe-area-inset-top)) 12px 24px}
     .dialog{border-radius:14px}
     .dlg-foot{flex-wrap:wrap}
@@ -930,12 +946,15 @@ async function ensureLocalPositiveAudit() {
 
 function detectorBannerHTML(tier, score, vt, id) {
   return '<div class="banner"' + (id ? ' id="' + id + '"' : '') + ' data-tier="' + tier + '" style="border-color:' + vt.ln + ';background:' + vt.bg + ';color:' + vt.c + '">' +
+    '<div class="banner-main">' +
     '<span class="dot" style="background:' + vt.c + '"></span>' +
+    '<div class="banner-text">' +
     '<span class="banner-tier" style="color:' + vt.c + '">' + tier + '</span>' +
-    '<span class="banner-label">Detector call</span>' +
-    '<span class="banner-div"></span>' +
+    '<span class="banner-label">Detector call</span></div></div>' +
+    '<span class="banner-div" aria-hidden="true"></span>' +
+    '<div class="banner-score-group">' +
     '<span class="banner-score-label">Model score</span>' +
-    '<span class="banner-score" style="color:' + vt.c + '">' + score.toFixed(4) + '</span></div>';
+    '<span class="banner-score" style="color:' + vt.c + '">' + score.toFixed(4) + '</span></div></div>';
 }
 
 function resultHTML() {
@@ -996,8 +1015,13 @@ function trustCardHTML(e, opts) {
   const routed = (au.status === 'FLAGGED' || au.status === 'DEFER') && S.queue.includes(e.key);
   const enter = !opts || opts.enter !== false;
   const expanded = opts && opts.expanded;
-  const meta = e.model + ' model \u00b7 evidence ' + shortHash(a.evidence_hash) + ' \u00b7 completed ' + (e.completed || nowUTC()) +
-    ' \u00b7 audit ' + (e.latency || '-') + (live ? ' \u00b7 served live' : ' \u00b7 session cache');
+  const meta = metaLineHTML([
+    e.model + ' model',
+    'evidence ' + shortHash(a.evidence_hash),
+    'completed ' + (e.completed || nowUTC()),
+    'audit ' + (e.latency || '-'),
+    live ? 'served live' : 'session cache',
+  ]);
   const line3 = au.reason_lines[2] || (au.defer_reason || '');
   let body = '<div class="card' + (enter ? ' enter' : '') + '"><div class="card-body">' +
     '<span class="status-pill" style="color:' + st.c + ';background:' + st.bg + ';border-color:' + st.ln + '">' + au.status + '</span>' +
@@ -1008,7 +1032,7 @@ function trustCardHTML(e, opts) {
     '<div class="ac-reason-2">' + reasonLineHTML(au.reason_lines[1] || '', a.metrics) + '</div>';
   if (expanded) {
     if (line3) body += '<div class="ac-reason-3">' + reasonLineHTML(line3, a.metrics) + '</div>';
-    body += metricsBlockHTML(a.metrics) + '<div class="meta-line">' + meta + '</div>';
+    body += metricsBlockHTML(a.metrics) + meta;
   } else {
     if (routed) {
       body += '<div class="routed"><span style="width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex:none"></span>' +
@@ -1018,7 +1042,7 @@ function trustCardHTML(e, opts) {
       '<div class="ev-wrap' + (S.evOpen ? ' open' : '') + '"><div class="ev-inner"><div style="padding-top:4px">' +
       (line3 ? '<div class="ac-reason-3" style="margin-top:10px">' + reasonLineHTML(line3, a.metrics) + '</div>' : '') +
       metricsBlockHTML(a.metrics) +
-      '<div class="meta-line">' + meta + '</div></div></div></div>';
+      meta + '</div></div></div>';
   }
   body += '</div>';
   if (!expanded) {
@@ -1031,11 +1055,17 @@ function metricHTML(k, v, d) {
   return '<div class="metric"><div class="k">' + k + '</div>' + v + '<div class="d">' + d + '</div></div>';
 }
 
+function metaLineHTML(parts) {
+  return '<div class="meta-line">' + parts.map((p) =>
+    '<span class="meta-item">' + esc(p) + '</span>'
+  ).join('') + '</div>';
+}
+
 function askInlineHTML() {
   return '<div class="ask-inline">' +
     '<div class="ask-label">Ask Claude (optional follow-up)</div>' +
     '<div class="ask-inline-row">' +
-    '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026">' +
+    '<input class="ask-input" id="askInput" maxlength="300" placeholder="Ask about this check\u2026" enterkeyhint="send" autocomplete="off">' +
     '<button class="btn-primary ask-send" data-action="askSend">Ask</button></div>' +
     '<div class="ask-inline-log" id="askLog"></div></div>';
 }
