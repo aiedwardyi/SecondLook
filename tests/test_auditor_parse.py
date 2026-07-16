@@ -199,6 +199,94 @@ def test_fake_anthropic_success_returns_status(monkeypatch):
     create_mock.assert_called_once()
 
 
+def test_audit_retries_rate_limit_then_succeeds(monkeypatch):
+    ok_json = (
+        '{"status":"VERIFIED","reason_lines":["On tissue.","Map agrees."],'
+        '"numbers_cited":["topk_mass=0.40"]}'
+    )
+    calls = {"n": 0}
+
+    class _RateLimit(Exception):
+        status_code = 429
+
+    def create(**_kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise _RateLimit("rate limit exceeded")
+        return types.SimpleNamespace(
+            content=[types.SimpleNamespace(type="text", text=ok_json)]
+        )
+
+    class _Messages:
+        def create(self, **kwargs):
+            return create(**kwargs)
+
+    class _Client:
+        def __init__(self, **_kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+    monkeypatch.setenv("CLAUDE_MAX_RETRIES", "4")
+    monkeypatch.setenv("CLAUDE_RETRY_BASE_SEC", "0.01")
+    monkeypatch.setattr("src.trust.auditor.time.sleep", lambda _s: None)
+    client_kwargs: list[dict] = []
+
+    class _ClientTracked(_Client):
+        def __init__(self, **kwargs):
+            client_kwargs.append(kwargs)
+            super().__init__(**kwargs)
+
+    fake.Anthropic = _ClientTracked
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    r = audit_tile(
+        score=0.95,
+        verdict="POSITIVE",
+        metrics=_METRICS,
+        api_key="test-key-not-real",
+    )
+    assert r.status == "VERIFIED"
+    assert calls["n"] == 3
+    assert all(k.get("max_retries") == 0 for k in client_kwargs)
+
+
+def test_audit_non_retryable_fails_closed_once(monkeypatch):
+    calls = {"n": 0}
+
+    class _Auth(Exception):
+        status_code = 401
+
+    def create(**_kwargs):
+        calls["n"] += 1
+        raise _Auth("invalid x-api-key")
+
+    class _Messages:
+        def create(self, **kwargs):
+            return create(**kwargs)
+
+    class _Client:
+        def __init__(self, **_kwargs):
+            self.messages = _Messages()
+
+    fake = types.ModuleType("anthropic")
+    fake.Anthropic = _Client
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+    monkeypatch.setenv("CLAUDE_MAX_RETRIES", "4")
+    monkeypatch.setattr("src.trust.auditor.time.sleep", lambda _s: None)
+
+    r = audit_tile(
+        score=0.95,
+        verdict="POSITIVE",
+        metrics=_METRICS,
+        api_key="test-key-not-real",
+    )
+    assert r.status == "DEFER"
+    assert r.defer_reason == DEFER_UNAVAILABLE
+    assert calls["n"] == 1
+
+
 def test_to_dict_includes_defer_reason():
     r = fail_closed("x")
     d = r.to_dict()

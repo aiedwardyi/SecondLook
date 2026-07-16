@@ -6,8 +6,8 @@ from threading import RLock
 
 from server.schemas import AuditResponse, ModelId, Tier
 
-# Match Streamlit session cache scale; bounds PNG-heavy records.
-MAX_RECORDS = 16
+# Bounds PNG-heavy records.
+MAX_RECORDS = 48
 
 
 @dataclass(frozen=True)

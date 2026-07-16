@@ -1,5 +1,6 @@
 """FastAPI app for detector inference and trust checks."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,7 +12,7 @@ from fastapi.responses import FileResponse
 from PIL import Image, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
-from server import cache
+from server import audit_coalesce, cache
 from server.cache import AnalysisRecord
 from server.inference import (
     ALLOWED_UPLOAD_TYPES,
@@ -32,7 +33,12 @@ from server.schemas import (
     ModelId,
     ScoreResponse,
 )
-from src.trust.auditor import audit_tile, follow_up_attention, plain_reason_line
+from src.trust.auditor import (
+    audit_tile,
+    claude_executor,
+    follow_up_attention,
+    plain_reason_line,
+)
 
 _INDEX_PATH = Path(__file__).resolve().parent / "static" / "index.html"
 _LOGGER = logging.getLogger(__name__)
@@ -210,7 +216,7 @@ async def analyze(
 
 
 @app.post("/api/audit", response_model=AuditResponse)
-def audit(body: AuditRequest) -> AuditResponse:
+async def audit(body: AuditRequest) -> AuditResponse:
     record = cache.get(body.evidence_hash)
     if record is None:
         raise HTTPException(status_code=404, detail="evidence not found")
@@ -224,28 +230,53 @@ def audit(body: AuditRequest) -> AuditResponse:
     if record.audit is not None and record.audit.status != "DEFER":
         return record.audit
 
-    result = audit_tile(
-        score=record.score,
-        verdict=call_tier,
-        metrics=record.metrics,
-        image_png=record.overlay_png,
-        model_id=record.model,
-    )
-    if result.error:
-        _LOGGER.warning("attention audit deferred: %s", result.error)
-    response = AuditResponse(
-        status=result.status,
-        reason_lines=[plain_reason_line(line) for line in result.reason_lines],
-        numbers_cited=result.numbers_cited,
-        defer_reason=result.defer_reason,
-    )
-    # Store all statuses (incl. DEFER) so /api/ask works; DEFER still re-runs above.
-    cache.set_audit(body.evidence_hash, response, call_tier=call_tier)
-    return response
+    coalesce_key = f"{body.evidence_hash}:{call_tier}"
+
+    def _run() -> AuditResponse:
+        latest = cache.get(body.evidence_hash)
+        if latest is None:
+            raise HTTPException(status_code=404, detail="evidence not found")
+        if latest.audit is not None and latest.audit.status != "DEFER":
+            return latest.audit
+        result = audit_tile(
+            score=latest.score,
+            verdict=call_tier,
+            metrics=latest.metrics,
+            image_png=latest.overlay_png,
+            model_id=latest.model,
+        )
+        if result.error:
+            _LOGGER.warning("attention audit deferred: %s", result.error)
+        response = AuditResponse(
+            status=result.status,
+            reason_lines=[plain_reason_line(line) for line in result.reason_lines],
+            numbers_cited=result.numbers_cited,
+            defer_reason=result.defer_reason,
+        )
+        # Store all statuses (incl. DEFER) so /api/ask works; DEFER still re-runs above.
+        cache.set_audit(body.evidence_hash, response, call_tier=call_tier)
+        return response
+
+    async def _run_async() -> AuditResponse:
+        return await asyncio.get_running_loop().run_in_executor(claude_executor(), _run)
+
+    try:
+        return await audit_coalesce.run_once_async(coalesce_key, _run_async, timeout=300.0)
+    except TimeoutError:
+        _LOGGER.warning("attention audit coalesce wait timed out for %s", body.evidence_hash)
+        return AuditResponse(
+            status="DEFER",
+            reason_lines=[
+                "Could not finish the trust check.",
+                "Please review this tile yourself.",
+            ],
+            numbers_cited=[],
+            defer_reason="AUDIT_UNAVAILABLE",
+        )
 
 
 @app.post("/api/ask", response_model=AskResponse)
-def ask(body: AskRequest) -> AskResponse:
+async def ask(body: AskRequest) -> AskResponse:
     record = cache.get(body.evidence_hash)
     if record is None:
         raise HTTPException(status_code=404, detail="evidence not found")
@@ -254,13 +285,17 @@ def ask(body: AskRequest) -> AskResponse:
 
     # Prefer the tier used when the audit ran (e.g. slider-lifted POSITIVE).
     ask_tier = record.audit_call_tier or record.tier
-    answer, error = follow_up_attention(
-        score=record.score,
-        tier=ask_tier,
-        metrics=record.metrics,
-        audit_status=record.audit.status,
-        reason_lines=record.audit.reason_lines,
-        image_png=record.overlay_png,
-        question=body.question,
-    )
+
+    def _run() -> tuple:
+        return follow_up_attention(
+            score=record.score,
+            tier=ask_tier,
+            metrics=record.metrics,
+            audit_status=record.audit.status,
+            reason_lines=record.audit.reason_lines,
+            image_png=record.overlay_png,
+            question=body.question,
+        )
+
+    answer, error = await asyncio.get_running_loop().run_in_executor(claude_executor(), _run)
     return AskResponse(answer=answer, error=error)
