@@ -24,6 +24,8 @@ The detector finds cancer. Claude decides whether to trust that finding.
 
 Video: https://www.youtube.com/watch?v=v3zw5bIx1yw
 
+[Hackathon entry](https://cerebralvalley.ai/e/built-with-claude-life-sciences/hackathon/gallery?project=90)
+
 ## What Claude does
 
 Claude reads the model, not the slide. It does not act as a pathologist and does not diagnose. On a confident **positive** call it runs an attention check - score plus where the heat sits (focus, corner, edge) - as a spellcheck on the detector finding. The card returns:
