@@ -393,9 +393,11 @@ def test_audit_coalesces_concurrent_same_hash(client, monkeypatch):
     started = threading.Event()
     release = threading.Event()
     calls = {"n": 0}
+    calls_lock = threading.Lock()
 
     def slow_audit(**_kwargs):
-        calls["n"] += 1
+        with calls_lock:
+            calls["n"] += 1
         started.set()
         assert release.wait(timeout=5)
         return AuditResult(
@@ -429,7 +431,8 @@ def test_audit_coalesces_concurrent_same_hash(client, monkeypatch):
     assert all(r.status_code == 200 for r in results)
     assert results[0].json()["status"] == "VERIFIED"
     assert results[1].json() == results[0].json()
-    assert calls["n"] == 1
+    with calls_lock:
+        assert calls["n"] == 1
 
 
 def test_audit_timeout_keeps_final_cached_result(client, monkeypatch):
@@ -451,23 +454,36 @@ def test_audit_timeout_keeps_final_cached_result(client, monkeypatch):
     response = client.post("/api/audit", json={"evidence_hash": "evidence"})
     assert response.status_code == 200
     assert response.json()["status"] == "VERIFIED"
+    stored = cache.get("evidence")
+    assert stored is not None and stored.audit is not None
+    assert stored.audit.status == "VERIFIED"
 
 
 def test_audit_uses_accepted_snapshot_if_evicted(client, monkeypatch):
     _put_record()
+    real_get = cache.get
+    hits = {"n": 0}
 
-    def audit_after_evict(**_kwargs):
-        monkeypatch.setattr(cache, "_RECORDS", OrderedDict())
-        return AuditResult(
+    def get_then_miss(key: str):
+        hits["n"] += 1
+        if hits["n"] == 1:
+            return real_get(key)
+        return None
+
+    monkeypatch.setattr(cache, "get", get_then_miss)
+    audit = Mock(
+        return_value=AuditResult(
             status="VERIFIED",
             reason_lines=["Attention stays on tissue.", "Map agrees."],
             numbers_cited=["corner_ratio=0.08"],
         )
-
-    monkeypatch.setattr(server_main, "audit_tile", audit_after_evict)
+    )
+    monkeypatch.setattr(server_main, "audit_tile", audit)
     response = client.post("/api/audit", json={"evidence_hash": "evidence"})
     assert response.status_code == 200
     assert response.json()["status"] == "VERIFIED"
+    audit.assert_called_once()
+    assert hits["n"] >= 2
 
 
 def test_audit_stores_defer_for_ask_but_does_not_reuse_on_audit(client, monkeypatch):

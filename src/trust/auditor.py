@@ -155,15 +155,27 @@ def _env_float(name: str, default: float) -> float:
 
 _CLAUDE_CONCURRENT = _env_int("CLAUDE_MAX_CONCURRENT", _DEFAULT_MAX_CONCURRENT)
 _CLAUDE_SEM = threading.BoundedSemaphore(_CLAUDE_CONCURRENT)
-# Dedicated pool so unique audits do not fill the default FastAPI threadpool.
-_CLAUDE_POOL = ThreadPoolExecutor(
-    max_workers=_CLAUDE_CONCURRENT,
-    thread_name_prefix="claude",
-)
+_CLAUDE_POOL: ThreadPoolExecutor | None = None
+_CLAUDE_POOL_LOCK = threading.Lock()
 
 
 def claude_executor() -> ThreadPoolExecutor:
-    return _CLAUDE_POOL
+    global _CLAUDE_POOL
+    with _CLAUDE_POOL_LOCK:
+        if _CLAUDE_POOL is None:
+            _CLAUDE_POOL = ThreadPoolExecutor(
+                max_workers=_CLAUDE_CONCURRENT,
+                thread_name_prefix="claude",
+            )
+        return _CLAUDE_POOL
+
+
+def shutdown_claude_executor() -> None:
+    global _CLAUDE_POOL
+    with _CLAUDE_POOL_LOCK:
+        if _CLAUDE_POOL is not None:
+            _CLAUDE_POOL.shutdown(wait=False, cancel_futures=True)
+            _CLAUDE_POOL = None
 
 
 def _is_retryable_api_error(exc: BaseException) -> bool:

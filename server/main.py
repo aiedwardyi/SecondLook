@@ -38,6 +38,7 @@ from src.trust.auditor import (
     claude_executor,
     follow_up_attention,
     plain_reason_line,
+    shutdown_claude_executor,
 )
 
 _INDEX_PATH = Path(__file__).resolve().parent / "static" / "index.html"
@@ -52,6 +53,7 @@ async def lifespan(app: FastAPI):
         ", ".join(sorted(app.state.inference.models)),
     )
     yield
+    shutdown_claude_executor()
 
 
 app = FastAPI(title="SecondLook", lifespan=lifespan)
@@ -265,10 +267,6 @@ async def audit(body: AuditRequest) -> AuditResponse:
         return await audit_coalesce.run_once_async(coalesce_key, _run_async, timeout=300.0)
     except TimeoutError:
         _LOGGER.warning("attention audit coalesce wait timed out for %s", body.evidence_hash)
-        # Work may have finished at the boundary and already cached a final audit.
-        latest = cache.get(body.evidence_hash)
-        if latest is not None and latest.audit is not None and latest.audit.status != "DEFER":
-            return latest.audit
         response = AuditResponse(
             status="DEFER",
             reason_lines=[
@@ -278,7 +276,10 @@ async def audit(body: AuditRequest) -> AuditResponse:
             numbers_cited=[],
             defer_reason="AUDIT_UNAVAILABLE",
         )
-        cache.set_audit(body.evidence_hash, response, call_tier=call_tier)
+        # Atomic: do not clobber a final audit that landed between check and write.
+        kept = cache.set_audit_soft(body.evidence_hash, response, call_tier=call_tier)
+        if kept is not None:
+            return kept
         return response
 
 
