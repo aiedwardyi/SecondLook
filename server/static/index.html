@@ -262,11 +262,17 @@
     .ex-grid{grid-template-columns:1fr;gap:12px}
     .content{padding:14px 12px 64px}
     .seg button{padding:4px 9px}
+    .top-row{flex-wrap:wrap;align-items:center;row-gap:8px}
+    .top-left{flex:1 1 auto;min-width:0}
+    .top-right{margin-left:auto}
+    .h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
 
   @media (max-width: 360px){
     /* Last resort only - still prefer side-by-side when possible */
     .pair{grid-template-columns:1fr 1fr;gap:6px}
+    .h1{font-size:18px}
+    .queue-chip{padding:0 8px;font-size:11px}
   }
 </style>
 </head>
@@ -364,10 +370,13 @@ function readStoredTheme() {
   catch { return 'dark'; }
 }
 
+const MQ_NARROW = '(max-width: 860px)';
+const isNarrow = () => window.matchMedia(MQ_NARROW).matches;
+
 const S = {
   theme: readStoredTheme(),
   // Mobile starts full-width; desktop keeps the rail open
-  sbOpen: typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches ? false : true,
+  sbOpen: !isNarrow(),
   tab: 'single',
   model: 'after', posT: 0.70, negT: 0.30,
   cmpTile: 'positive-1', cmpModel: 'before',
@@ -383,6 +392,19 @@ const S = {
   auditPending: false,
   device: null,
 };
+
+// Keep drawer/rail mode aligned when the 860px breakpoint flips (rotate, resize)
+(function bindSidebarBreakpoint() {
+  const mq = window.matchMedia(MQ_NARROW);
+  const onChange = () => {
+    const wantOpen = !mq.matches;
+    if (S.sbOpen === wantOpen) return;
+    S.sbOpen = wantOpen;
+    render();
+  };
+  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+  else if (typeof mq.addListener === 'function') mq.addListener(onChange);
+})();
 
 function tileUrl(tileId) {
   return '/api/tile/' + encodeURIComponent(tileId) + '?v=' + GALLERY_ASSET_V;
@@ -763,7 +785,7 @@ function mainHTML() {
     '<div class="content">' +
     '<div class="top-row">' +
     '<div class="top-left">' +
-    '<button class="sb-menu" data-action="toggleSb" title="Menu" aria-label="Open menu">\u2630</button>' +
+    '<button class="sb-menu" data-action="toggleSb" title="Menu" aria-label="Toggle menu" aria-expanded="' + (S.sbOpen ? 'true' : 'false') + '">\u2630</button>' +
     '<h1 class="h1">SecondLook</h1></div>' +
     '<div class="top-right">' +
     '<button class="queue-chip' + (qn ? ' has-items' : '') + (S.queuePulse ? ' pulse' : '') + '" data-action="openQueue" title="Review queue">' +
@@ -1182,7 +1204,7 @@ document.addEventListener('click', (ev) => {
     case 'openCase':
       S.dialogKey = arg;
       // On narrow screens the drawer would sit under the dialog - tuck it away
-      if (window.matchMedia('(max-width: 860px)').matches) S.sbOpen = false;
+      if (isNarrow()) S.sbOpen = false;
       render();
       break;
     case 'closeDlg': S.dialogKey = null; render(); break;
