@@ -114,18 +114,19 @@ def test_run_once_async_waiter_timeout_does_not_poison():
     assert asyncio.run(main()) == 2
 
 
-def test_run_once_async_leader_timeout_notifies_waiters():
+def test_run_once_async_leader_timeout_keeps_shared_work():
     started = asyncio.Event()
+    release = asyncio.Event()
     calls = {"n": 0}
 
     async def factory():
         calls["n"] += 1
         started.set()
-        await asyncio.sleep(10)
-        return 1
+        await release.wait()
+        return 42
 
     async def main():
-        leader = asyncio.create_task(run_once_async("lead-to", factory, timeout=0.12))
+        leader = asyncio.create_task(run_once_async("lead-to", factory, timeout=0.1))
         await started.wait()
         waiter = asyncio.create_task(run_once_async("lead-to", factory, timeout=2.0))
         try:
@@ -133,27 +134,25 @@ def test_run_once_async_leader_timeout_notifies_waiters():
             raise AssertionError("expected leader TimeoutError")
         except TimeoutError:
             pass
-        try:
-            await waiter
-            raise AssertionError("expected waiter error")
-        except TimeoutError:
-            pass
-        async def ok():
-            return 9
-        assert await run_once_async("lead-to", ok, timeout=2.0) == 9
+        await asyncio.sleep(0.05)
+        assert calls["n"] == 1
+        release.set()
+        assert await waiter == 42
         return calls["n"]
 
-    # leader only; waiter shared the same in-flight factory
     assert asyncio.run(main()) == 1
 
 
-def test_run_once_async_leader_cancel_notifies_waiters():
+def test_run_once_async_leader_cancel_keeps_shared_work():
     started = asyncio.Event()
+    release = asyncio.Event()
+    calls = {"n": 0}
 
     async def factory():
+        calls["n"] += 1
         started.set()
-        await asyncio.sleep(10)
-        return 1
+        await release.wait()
+        return 7
 
     async def main():
         leader = asyncio.create_task(run_once_async("lead-c", factory, timeout=5.0))
@@ -165,13 +164,8 @@ def test_run_once_async_leader_cancel_notifies_waiters():
             await leader
         except asyncio.CancelledError:
             pass
-        try:
-            await waiter
-            raise AssertionError("expected waiter error")
-        except TimeoutError:
-            pass
-        async def ok():
-            return 5
-        assert await run_once_async("lead-c", ok, timeout=2.0) == 5
+        assert calls["n"] == 1
+        release.set()
+        assert await waiter == 7
 
     asyncio.run(main())

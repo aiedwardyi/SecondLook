@@ -133,12 +133,12 @@ def fail_closed(reason: str, *, raw: str | None = None) -> AuditResult:
     )
 
 
-def _env_int(name: str, default: int) -> int:
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
     raw = os.environ.get(name)
     if raw is None or str(raw).strip() == "":
         return default
     try:
-        return max(1, int(raw))
+        return max(minimum, int(raw))
     except ValueError:
         return default
 
@@ -203,11 +203,13 @@ def _claude_messages_create(
 ) -> Any:
     import anthropic
 
-    retries = _env_int("CLAUDE_MAX_RETRIES", _DEFAULT_MAX_RETRIES)
+    retries = _env_int("CLAUDE_MAX_RETRIES", _DEFAULT_MAX_RETRIES, minimum=0)
     base = _env_float("CLAUDE_RETRY_BASE_SEC", _DEFAULT_RETRY_BASE_SEC)
     last_exc: BaseException | None = None
+    # One initial attempt + retries.
+    attempts = retries + 1
 
-    for attempt in range(retries):
+    for attempt in range(attempts):
         if not _CLAUDE_SEM.acquire(timeout=_CLAUDE_QUEUE_WAIT_SEC):
             raise TimeoutError("claude concurrency queue timeout")
         try:
@@ -220,7 +222,7 @@ def _claude_messages_create(
             )
         except Exception as exc:
             last_exc = exc
-            if attempt + 1 >= retries or not _is_retryable_api_error(exc):
+            if attempt + 1 >= attempts or not _is_retryable_api_error(exc):
                 raise
         finally:
             # Release before sleep so other calls can proceed during backoff.

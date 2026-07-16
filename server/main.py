@@ -264,7 +264,7 @@ async def audit(body: AuditRequest) -> AuditResponse:
         return await audit_coalesce.run_once_async(coalesce_key, _run_async, timeout=300.0)
     except TimeoutError:
         _LOGGER.warning("attention audit coalesce wait timed out for %s", body.evidence_hash)
-        return AuditResponse(
+        response = AuditResponse(
             status="DEFER",
             reason_lines=[
                 "Could not finish the trust check.",
@@ -273,6 +273,8 @@ async def audit(body: AuditRequest) -> AuditResponse:
             numbers_cited=[],
             defer_reason="AUDIT_UNAVAILABLE",
         )
+        cache.set_audit(body.evidence_hash, response, call_tier=call_tier)
+        return response
 
 
 @app.post("/api/ask", response_model=AskResponse)
@@ -297,5 +299,11 @@ async def ask(body: AskRequest) -> AskResponse:
             question=body.question,
         )
 
-    answer, error = await asyncio.get_running_loop().run_in_executor(claude_executor(), _run)
+    try:
+        answer, error = await asyncio.wait_for(
+            asyncio.get_running_loop().run_in_executor(claude_executor(), _run),
+            timeout=300.0,
+        )
+    except TimeoutError:
+        return AskResponse(answer=None, error="api_error")
     return AskResponse(answer=answer, error=error)

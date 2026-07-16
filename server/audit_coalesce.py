@@ -22,7 +22,6 @@ def _drop_inflight(key: str, fut: Future) -> None:
 def _fail_shared(fut: Future, exc: BaseException) -> None:
     if fut.done():
         return
-    # concurrent.futures rejects CancelledError-like states for waiters; use TimeoutError.
     if isinstance(exc, asyncio.CancelledError):
         fut.set_exception(TimeoutError("leader cancelled"))
     else:
@@ -30,7 +29,6 @@ def _fail_shared(fut: Future, exc: BaseException) -> None:
 
 
 async def _await_shared(fut: Future, timeout: float) -> T:
-    """Wait without cancelling the shared Future on timeout."""
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
     while not fut.done():
@@ -74,7 +72,6 @@ async def run_once_async(
     *,
     timeout: float = 300.0,
 ) -> T:
-    """Waiters await; they do not hold a threadpool worker."""
     leader = False
     with _LOCK:
         existing = _INFLIGHT.get(key)
@@ -88,15 +85,25 @@ async def run_once_async(
     if not leader:
         return await _await_shared(fut, timeout)
 
+    # Drive factory to completion in a task so HTTP timeout does not free the key
+    # while executor work is still running (avoids a second leader / duplicate Claude).
+    async def _drive() -> T:
+        try:
+            value = await factory()
+        except BaseException as exc:
+            _fail_shared(fut, exc)
+            raise
+        else:
+            if not fut.done():
+                fut.set_result(value)
+            return value
+        finally:
+            _drop_inflight(key, fut)
+
+    task = asyncio.create_task(_drive())
     try:
-        # Timeout covers executor queue wait + work (followers already timed).
-        value = await asyncio.wait_for(factory(), timeout=timeout)
-    except BaseException as exc:
-        _fail_shared(fut, exc)
+        return await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
+    except TimeoutError:
         raise
-    else:
-        if not fut.done():
-            fut.set_result(value)
-        return value
-    finally:
-        _drop_inflight(key, fut)
+    except asyncio.CancelledError:
+        raise

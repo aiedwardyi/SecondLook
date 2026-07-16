@@ -228,7 +228,7 @@ def test_audit_retries_rate_limit_then_succeeds(monkeypatch):
     fake = types.ModuleType("anthropic")
     fake.Anthropic = _Client
     monkeypatch.setitem(sys.modules, "anthropic", fake)
-    monkeypatch.setenv("CLAUDE_MAX_RETRIES", "4")
+    monkeypatch.setenv("CLAUDE_MAX_RETRIES", "2")
     monkeypatch.setenv("CLAUDE_RETRY_BASE_SEC", "0.01")
     monkeypatch.setattr("src.trust.auditor.time.sleep", lambda _s: None)
     client_kwargs: list[dict] = []
