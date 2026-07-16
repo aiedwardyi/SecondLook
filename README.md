@@ -22,7 +22,9 @@ The detector finds cancer. Claude decides whether to trust that finding.
 2. Open **Compare** on a positive tile.
 3. Note `before`: corner heat, Claude **FLAGGED**. Note `after`: tissue heat, Claude **VERIFIED**. Same detector confidence class; different trust.
 
-Video: https://youtu.be/uSuEFsHgjWU
+Video: https://www.youtube.com/watch?v=v3zw5bIx1yw
+
+[Hackathon entry](https://cerebralvalley.ai/e/built-with-claude-life-sciences/hackathon/gallery?project=90)
 
 ## What Claude does
 

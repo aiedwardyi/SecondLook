@@ -203,6 +203,81 @@
   .sb-expand:hover{color:var(--text);background:var(--hov)}
   .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--text3)}
   .pending{font-size:12px;color:var(--text3);animation:skPulse 1.4s ease-in-out infinite;grid-column:1 / -1}
+
+  /* mobile chrome - desktop hides these */
+  .top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .top-left{display:flex;align-items:center;gap:10px;min-width:0}
+  .top-right{display:flex;align-items:center;gap:8px;flex:none}
+  .sb-menu,.queue-chip,.sb-backdrop{display:none}
+  .sb-menu{width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);color:var(--text2);font-size:16px;line-height:1;align-items:center;justify-content:center;flex:none}
+  .sb-menu:hover{color:var(--text);background:var(--hov)}
+  .queue-chip{align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;transition:border-color .2s,background .2s,color .2s}
+  .queue-chip:hover{color:var(--text);background:var(--hov)}
+  .queue-chip .queue-badge{min-width:18px;height:18px;font-size:10px}
+  .queue-chip.has-items{color:var(--text);border-color:var(--warn-line);background:var(--warn-bg)}
+  .queue-chip.pulse{animation:pipPulse .55s ease;border-color:var(--warn-line);background:var(--warn-bg);color:var(--text)}
+  .cmp-models{display:flex;gap:24px;margin-top:14px;flex-wrap:wrap}
+
+  /* Mobile / narrow: drawer sidebar, full-width main, keep before/after pair side-by-side */
+  @media (max-width: 860px){
+    .app{height:100dvh}
+    .sb-expand{display:none}
+    .sb-menu{display:inline-flex}
+    .queue-chip{display:inline-flex}
+    .sb-backdrop{
+      display:block;position:fixed;inset:0;z-index:55;padding:0;margin:0;border:0;
+      background:var(--dim);animation:fadeIn .18s ease;cursor:pointer;
+      -webkit-appearance:none;appearance:none;
+    }
+    .sidebar{
+      position:fixed;left:0;top:0;bottom:0;z-index:60;
+      width:min(296px,88vw);max-width:100%;
+      box-shadow:var(--shadow);
+      padding-bottom:env(safe-area-inset-bottom,0);
+    }
+    .main{width:100%;height:100dvh}
+    .content{padding:18px 16px 72px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+    .h1{font-size:22px}
+    .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;scrollbar-width:none;margin-top:14px}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:none;white-space:nowrap;padding:9px 12px 11px}
+    .dropzone{flex-wrap:wrap}
+    .dropzone .btn{width:100%}
+    /* Keep pair side-by-side - Grad-CAM compare is the point */
+    .pair{gap:8px}
+    .figcap{font-size:10px;letter-spacing:.08em;margin-bottom:6px}
+    .ex-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+    .metrics{grid-template-columns:1fr}
+    .banner{flex-wrap:wrap;gap:8px 12px}
+    .banner-tier{font-size:20px}
+    .ask-msgs{grid-template-columns:1fr;row-gap:4px}
+    .msg-who{padding-top:0}
+    .ask-inline-row{flex-wrap:wrap}
+    .ask-send{flex:1}
+    .overlay{padding:max(12px,env(safe-area-inset-top)) 12px 24px}
+    .dialog{border-radius:14px}
+    .dlg-foot{flex-wrap:wrap}
+    .dlg-foot .btn-primary,.dlg-foot .btn-ghost{flex:1 1 auto;min-height:40px}
+    .card-foot{flex-wrap:wrap}
+    .cmp-models{gap:10px 18px}
+  }
+
+  @media (max-width: 480px){
+    .ex-grid{grid-template-columns:1fr;gap:12px}
+    .content{padding:14px 12px 64px}
+    .seg button{padding:4px 9px}
+    .top-row{flex-wrap:wrap;align-items:center;row-gap:8px}
+    .top-left{flex:1 1 auto;min-width:0}
+    .top-right{margin-left:auto}
+    .h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  }
+
+  @media (max-width: 360px){
+    /* Last resort only - still prefer side-by-side when possible */
+    .pair{grid-template-columns:1fr 1fr;gap:6px}
+    .h1{font-size:18px}
+    .queue-chip{padding:0 8px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -299,8 +374,14 @@ function readStoredTheme() {
   catch { return 'dark'; }
 }
 
+const MQ_NARROW = '(max-width: 860px)';
+const isNarrow = () => window.matchMedia(MQ_NARROW).matches;
+
 const S = {
-  theme: readStoredTheme(), sbOpen: true, tab: 'single',
+  theme: readStoredTheme(),
+  // Mobile starts full-width; desktop keeps the rail open
+  sbOpen: !isNarrow(),
+  tab: 'single',
   model: 'after', posT: 0.70, negT: 0.30,
   cmpTile: 'positive-1', cmpModel: 'before',
   current: null,
@@ -316,11 +397,25 @@ const S = {
   device: null,
 };
 
+// Keep drawer/rail mode aligned when the 860px breakpoint flips (rotate, resize)
+(function bindSidebarBreakpoint() {
+  const mq = window.matchMedia(MQ_NARROW);
+  const onChange = () => {
+    const wantOpen = !mq.matches;
+    if (S.sbOpen === wantOpen) return;
+    S.sbOpen = wantOpen;
+    render();
+  };
+  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+  else if (typeof mq.addListener === 'function') mq.addListener(onChange);
+})();
+
 function tileUrl(tileId) {
   return '/api/tile/' + encodeURIComponent(tileId) + '?v=' + GALLERY_ASSET_V;
 }
 let runSeq = 0;
 let uploadSeq = 0;
+let queuePulseTimer = null;
 const uploadIds = new WeakMap();
 const UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
 const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/tiff']);
@@ -497,14 +592,17 @@ function addToQueue(key, pulse) {
   S.queue.unshift(key);
   if (pulse) {
     S.freshQueueKey = key; S.queuePulse = true; S.queueOpen = true;
-    setTimeout(() => {
+    // Do not force-open the sidebar - the header Queue chip pulses instead
+    if (queuePulseTimer) clearTimeout(queuePulseTimer);
+    queuePulseTimer = setTimeout(() => {
+      queuePulseTimer = null;
       S.queuePulse = false;
       S.freshQueueKey = null;
-      const badge = document.querySelector('.queue-badge');
-      if (badge) badge.classList.remove('pulse');
+      document.querySelectorAll('.queue-badge.pulse').forEach((badge) => badge.classList.remove('pulse'));
+      document.querySelectorAll('.queue-chip.pulse').forEach((chip) => chip.classList.remove('pulse'));
       const fresh = document.querySelector('.queue-item.fresh');
       if (fresh) fresh.classList.remove('fresh');
-    }, 700);
+    }, 900);
   }
 }
 
@@ -599,7 +697,9 @@ function renderApp() {
   const prevMain = document.querySelector('.main');
   const mainScroll = prevMain ? prevMain.scrollTop : 0;
   const root = document.getElementById('app');
-  root.innerHTML = (S.sbOpen ? sidebarHTML() : '') + mainHTML();
+  root.innerHTML =
+    (S.sbOpen ? sidebarHTML() + '<button type="button" class="sb-backdrop" data-action="closeSb" aria-label="Close menu"></button>' : '') +
+    mainHTML();
   const nextMain = document.querySelector('.main');
   if (nextMain) {
     nextMain.scrollTop = S.scrollMainTo != null ? S.scrollMainTo : mainScroll;
@@ -686,13 +786,19 @@ function mainHTML() {
     result = resultHTML();
   }
   const mainBody = S.tab === 'examples' ? result + body : body + result;
+  const qn = S.queue.length;
   return '<main class="main">' +
     (!S.sbOpen ? '<button class="sb-expand" data-action="toggleSb" title="Expand sidebar">\u203a</button>' : '') +
     '<div class="content">' +
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
-    '<h1 class="h1">SecondLook</h1>' +
+    '<div class="top-row">' +
+    '<div class="top-left">' +
+    '<button class="sb-menu" data-action="toggleSb" title="Menu" aria-label="Toggle menu" aria-expanded="' + (S.sbOpen ? 'true' : 'false') + '">\u2630</button>' +
+    '<h1 class="h1">SecondLook</h1></div>' +
+    '<div class="top-right">' +
+    '<button class="queue-chip' + (qn ? ' has-items' : '') + (S.queuePulse ? ' pulse' : '') + '" data-action="openQueue" title="Review queue">' +
+    'Queue<span class="queue-badge' + (S.queuePulse ? ' pulse' : '') + '">' + qn + '</span></button>' +
     '<div class="seg"><button class="' + (S.theme === 'dark' ? 'on' : '') + '" data-action="setTheme" data-arg="dark">Dark</button>' +
-    '<button class="' + (S.theme === 'light' ? 'on' : '') + '" data-action="setTheme" data-arg="light">Light</button></div></div>' +
+    '<button class="' + (S.theme === 'light' ? 'on' : '') + '" data-action="setTheme" data-arg="light">Light</button></div></div></div>' +
     '<div class="tabs">' + tabHTML('single', 'Single Image Analysis') + tabHTML('examples', 'Examples') + tabHTML('compare', 'Compare') + '</div>' +
     mainBody +
     '<div class="footer-note">Research and educational use. Not for clinical use.</div>' +
@@ -742,7 +848,7 @@ function compareHTML() {
   ).join('');
   return '<div style="margin-top:24px"><div class="eyebrow">Tile</div>' +
     '<select class="select" data-select="cmpTile">' + opts + '</select>' +
-    '<div style="display:flex;gap:24px;margin-top:14px">' +
+    '<div class="cmp-models">' +
     radioHTML('setCmpModel', 'before', S.cmpModel === 'before', 'before (correction off)') +
     radioHTML('setCmpModel', 'after', S.cmpModel === 'after', 'after (correction on)') +
     '</div>' +
@@ -1050,6 +1156,8 @@ document.addEventListener('click', (ev) => {
   const arg = el.dataset.arg;
   switch (el.dataset.action) {
     case 'toggleSb': S.sbOpen = !S.sbOpen; render(); break;
+    case 'closeSb': S.sbOpen = false; render(); break;
+    case 'openQueue': S.sbOpen = true; S.queueOpen = true; render(); break;
     case 'toggleQueue': S.queueOpen = !S.queueOpen; render(); break;
     case 'setTheme': setTheme(arg); break;
     case 'setTab':
@@ -1100,7 +1208,12 @@ document.addEventListener('click', (ev) => {
     }
     case 'askChip': sendAsk(arg); break;
     case 'askSend': { const inp = document.getElementById('askInput'); if (inp) { sendAsk(inp.value); } break; }
-    case 'openCase': S.dialogKey = arg; render(); break;
+    case 'openCase':
+      S.dialogKey = arg;
+      // On narrow screens the drawer would sit under the dialog - tuck it away
+      if (isNarrow()) S.sbOpen = false;
+      render();
+      break;
     case 'closeDlg': S.dialogKey = null; render(); break;
     case 'markReviewed': S.queue = S.queue.filter((k) => k !== S.dialogKey); S.dialogKey = null; render(); break;
   }
