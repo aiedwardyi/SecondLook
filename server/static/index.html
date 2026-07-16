@@ -224,7 +224,11 @@
     .sb-expand{display:none}
     .sb-menu{display:inline-flex}
     .queue-chip{display:inline-flex}
-    .sb-backdrop{display:block;position:fixed;inset:0;z-index:55;background:var(--dim);animation:fadeIn .18s ease}
+    .sb-backdrop{
+      display:block;position:fixed;inset:0;z-index:55;padding:0;margin:0;border:0;
+      background:var(--dim);animation:fadeIn .18s ease;cursor:pointer;
+      -webkit-appearance:none;appearance:none;
+    }
     .sidebar{
       position:fixed;left:0;top:0;bottom:0;z-index:60;
       width:min(296px,88vw);max-width:100%;
@@ -411,6 +415,7 @@ function tileUrl(tileId) {
 }
 let runSeq = 0;
 let uploadSeq = 0;
+let queuePulseTimer = null;
 const uploadIds = new WeakMap();
 const UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
 const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/tiff']);
@@ -588,7 +593,9 @@ function addToQueue(key, pulse) {
   if (pulse) {
     S.freshQueueKey = key; S.queuePulse = true; S.queueOpen = true;
     // Do not force-open the sidebar - the header Queue chip pulses instead
-    setTimeout(() => {
+    if (queuePulseTimer) clearTimeout(queuePulseTimer);
+    queuePulseTimer = setTimeout(() => {
+      queuePulseTimer = null;
       S.queuePulse = false;
       S.freshQueueKey = null;
       document.querySelectorAll('.queue-badge.pulse').forEach((badge) => badge.classList.remove('pulse'));
@@ -691,7 +698,7 @@ function renderApp() {
   const mainScroll = prevMain ? prevMain.scrollTop : 0;
   const root = document.getElementById('app');
   root.innerHTML =
-    (S.sbOpen ? sidebarHTML() + '<div class="sb-backdrop" data-action="closeSb" aria-hidden="true"></div>' : '') +
+    (S.sbOpen ? sidebarHTML() + '<button type="button" class="sb-backdrop" data-action="closeSb" aria-label="Close menu"></button>' : '') +
     mainHTML();
   const nextMain = document.querySelector('.main');
   if (nextMain) {
