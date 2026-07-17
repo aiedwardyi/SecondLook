@@ -6,6 +6,8 @@
 
 > Research and teaching demonstration only. Not a medical device. Not for diagnosis or clinical use.
 
+*Detection approach presented at AAD Innovation Academy 2026. [See related research](#related-research).*
+
 SecondLook is for a **dermatopathologist, Mohs surgeon, or dermatologist** reviewing tissue tiles for basal cell carcinoma. They upload images. The app scores each tile with EfficientNet-B4, shows Grad-CAM attention, and maps the score to a three-tier call (positive / uncertain / negative). On a confident positive, Claude runs a constrained attention check - a spellcheck on whether that finding should be trusted, not a diagnosis of the patient. The detector class never changes. The doctor owns the final call.
 
 The detector finds cancer. Claude decides whether to trust that finding.
@@ -149,6 +151,15 @@ Dataset credit:
 > Kriegsmann K, Lobers F, Zgorzelski C, et al. Deep learning for the detection of anatomical tissue structures and neoplasms of the skin on scanned histopathological tissue sections. Front Oncol. 2022;12:1022967. doi:10.3389/fonc.2022.1022967
 
 Data downloaded from the heiDATA deposit (DOI 10.11588/data/7QCR8S), Creative Commons Attribution (CC BY).
+
+## Related research
+
+**Beyond Binary Classification: A Three-Tier Deep Learning Framework for Basal Cell Carcinoma Histopathology**
+
+Presented at American Academy of Dermatology Innovation Academy 2026 (Digital/Electronic Technology), New York, July 2026.  
+Henry Lim D.O., Edward Yi, and Stanislav Tolkachjov M.D.  
+Poster ID 85613.  
+[eposters.aad.org/abstracts/85613](https://eposters.aad.org/abstracts/85613)
 
 ## Citing
 
