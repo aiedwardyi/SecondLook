@@ -76,7 +76,7 @@ Held-out test metrics (from `experiments/*/eval/eval_summary.json`; n_test = 280
 
 Aggregate scores stay high on both runs. The slight PPV dip on `after` is expected. Metrics alone do not separate the models; attention maps do. That is what the trust layer checks.
 
-![Grad-CAM attention across 60 high-confidence BCC positives](docs/gradcam-montage.png)
+![Grad-CAM attention across 60 high-confidence BCC positives](docs/gradcam-montage.jpg)
 
 Grad-CAM attention on 60 high-confidence BCC positives from the held-out test set, corrected model. Heat sits on tissue across the set rather than on a padding corner.
 
