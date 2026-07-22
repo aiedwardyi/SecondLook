@@ -26,6 +26,8 @@ The detector finds cancer. Claude decides whether to trust that finding.
 
 Video: [YouTube](https://youtu.be/v3zw5bIx1yw)
 
+Website: [secondlookderm.com](https://secondlookderm.com)
+
 Hackathon entry: [Built with Claude: Life Sciences](https://cerebralvalley.ai/e/built-with-claude-life-sciences/hackathon/gallery?project=90)
 
 ## What Claude does
